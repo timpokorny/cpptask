@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project name="cpptask" basedir="." default="jar">
+
+	<!-- ========================================================= -->
+	<!--                    Project Properties                     -->
+	<!-- ========================================================= -->
+	<property name="build.dir"         location="build"/>
+	<property name="classes.dir"       location="${build.dir}/classes"/>
+	<property name="src.dir"           location="src"/>
+	<property name="jarfile"           location="cpptask.jar"/>
+
+	<!-- library properties -->
+	<property name="lib.dir"           location="lib"/>
+	<property name="ant.lib.dir"       location="${lib.dir}/apache-ant-1.8.4"/>
+	<path id="ant.lib.path">
+		<fileset dir="${ant.lib.dir}"  includes="**/*.jar"/>
+	</path>
+
+	<!-- ========================================================= -->
+	<!--                       Project Tasks                       -->
+	<!-- ========================================================= -->
+	<target name="clean" description="delete all generated files">
+		<delete dir="${build.dir}"/>
+		<delete file="${jarfile}"/>
+		<delete dir="build-cpp"/>
+	</target>
+
+	<target name="init">
+		<mkdir dir="${classes.dir}"/>
+	</target>
+
+	<target name="compile" depends="init" description="compile all the task code">
+		<javac srcdir="${src.dir}"
+		       destdir="${classes.dir}"
+		       debug="true"
+		       debuglevel="lines,vars,source"
+		       includeantruntime="true"
+		       classpathref="ant.lib.path"/>
+	</target>
+
+	<target name="jar" depends="compile" description="create the task jar file">
+		<jar destfile="${jarfile}" basedir="${classes.dir}"/>
+	</target>
+
+	<target name="use" depends="jar" description="test the element">
+		<taskdef name="cpptask" 
+		         classname="com.lbf.cpptask.CppTask"
+		         classpath="${jarfile}"/>
+
+			<mkdir dir="build-cpp/classes"/>
+			<cpptask failonerror="true"
+			         outfile="build-cpp/portico"
+			         compiler="g++"
+			         outtype="shared"
+			         objdir="build-cpp/classes"
+			         incremental="true"
+			         compilerArgs="-O2 -fPIC"
+			         linkerArgs="-framework JavaVM">
+
+				<fileset dir="/Users/tim/Documents/workspace/portico/codebase/src-cpp/ng6">
+					<include name="**/*.cpp"/>
+				</fileset>
+
+				<!--
+				<fileset dir="" includes="*.o"/> == only used for linking
+				-->
+
+				<!--
+				<library path=""/>
+				<library libs=""/>
+				<library path="" libs=""/>
+				-->
+
+				<includepath path="/Users/tim/Documents/workspace/portico/codebase/src-cpp/include/ng6"/>
+				<includepath path="/Library/Java/Home/include"/>
+				<define name="RTI_USES_STD_FSTREAM"/>
+				<define name="BUILDING_RTI"/>
+				<define name="BUILDING_FEDTIME"/>
+			</cpptask>
+	</target>
+
+</project>

@@ -1,0 +1,90 @@
+       ===============================================
+       ===== Welcome to the cpptask Ant Project! =====
+       ===============================================
+
+This project provides a simple C++ command-line compiling Ant task
+for use in your Ant builds. It was born out of my general frustration
+around not being able to get the simple results I wanted out of the
+<cc> task in the ant-contrib packages.
+
+This task really just provides a thin wrapper around basic command-line
+tools for compiling C++ code. Rather than attempt to provide a massive,
+fully featured, "will do everything on all compilers" task, this task
+provides a simplified wrapper with basic support for setting paths (to
+source, includes and libraries) and symbols. More direct access to the
+compiler is provided by allowing (requiring) you to set the compiler
+and linker command line arguments directly.
+
+This task is predicated on the notion that you already know the options
+to pass to the compiler to get it to do what you want, and provides only
+help for specifying source, include and library paths, but that's about
+it.
+
+Usage Example
+-------------------------
+To make the task available in your build, you must ensure that the
+cpptask.jar file is in your ANT_LIB directory (or otherwise available
+on Ant's classpath) and then define the task in your build file as
+follows:
+
+<!-- bring in the cpp compiling ant task -->
+<taskdef name="cpptask" classname="com.lbf.cpptask.CppTask"/>
+
+Consider the example Ant build snippet below:
+
+<cpptask outfile="${build.dir}/complete/test13"
+         objdir="${build.dir}/obj"
+         outtype="executable"
+         compiler="g++"
+         compilerArgs="-g -arch i386 -O2 -fPIC -Wall -Wno-non-virtual-dtor"
+         linkerArgs="-framework JavaVM -arch i386">
+	<fileset dir="${test13.src.dir}" includes="**/*.cpp"/>
+	<includepath path="${hla13.include.dir}/ng6"/>
+	<includepath path="${hla13.src.dir}/hla/time"/>
+	<includepath path="${cppunit.include}"/>
+	<define name="RTI_USES_STD_FSTREAM"/>
+	<library path="${ng6.complete.dir}" libs="RTI-NG"/>
+	<library path="${cppunit.lib}" libs="cppunit"/>
+</cpptask>
+
+This compiles all the selected code from the ${hla13.src.dir}, using
+a few different include paths and specifying a few defines.
+
+Attributes and Options
+-------------------------
+You can specify the following attributes against the task:
+
+  * outfile:      The name of the file to generate.
+  * objdir:       The directory to dump intermediate object files into.
+  * outtype:      Can be "executable" or "shared". General exe or library.
+  * compiler:     The compiler to use. Supports "g++" or "msvc".
+  * compilerArgs: The command line arguments to pass to the compiler.
+  * linkerArgs:   The command line arguments to pass to the linker.
+
+You can specify any number of the following four types in the body of
+the task:
+
+  * fileset:     Set of all source code to be compiled. Standard Ant fileset.
+
+  * define:      Symbol definitions to be included for the compiler
+
+  * includepath: For specifying a value to be appended to the include path.
+                 You can specify multiple paths with the system path separator
+                 or you can specify the tag multiple times.
+  * library:     Takes a path and a comma-separated list of libraries to load
+                 when linking takes place.
+
+Building cpptask
+-------------------------
+To build this project, just check it out and run the provided Ant build
+file with the "jar" target (or use -projecthelp to get a list of all public
+targets).
+
+
+--------------------------
+ The littlebluefrog labs
+--------------------------
+The littlebluefrog labs is the name given to a bunch of projects created by
+a small group of developers who share a common background and workplace.
+
+For more information see: http://labs.littebluefrog.com
