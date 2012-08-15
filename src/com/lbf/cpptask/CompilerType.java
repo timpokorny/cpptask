@@ -18,13 +18,39 @@ import org.apache.tools.ant.BuildException;
 
 import com.lbf.cpptask.gcc.CompilerGCC;
 import com.lbf.cpptask.msvc.CompilerMSVC;
+import com.lbf.cpptask.msvc.Version;
 
 public enum CompilerType
 {
+	//----------------------------------------------------------
+	//                    ENUMERATED VALUES
+	//----------------------------------------------------------
 	GCC,
 	GPP,
-	MSVC;
+	VC7,
+	VC8,
+	VC9,
+	VC10;
 
+	//----------------------------------------------------------
+	//                   INSTANCE VARIABLES
+	//----------------------------------------------------------
+
+	//----------------------------------------------------------
+	//                      CONSTRUCTORS
+	//----------------------------------------------------------
+	@Override
+	public String toString()
+	{
+		if( this == GPP )
+			return "g++";
+		else
+			return super.toString();
+	}
+
+	//----------------------------------------------------------
+	//                     STATIC METHODS
+	//----------------------------------------------------------
 	/**
 	 * Create a new instance of the identifeid compiler and return it.
 	 */
@@ -36,8 +62,14 @@ public enum CompilerType
 				return new CompilerGCC("gcc");
 			case GPP:
 				return new CompilerGCC("g++");
-			case MSVC:
-				return new CompilerMSVC();
+			case VC7:
+				return new CompilerMSVC( Version.VC7 );
+			case VC8:
+				return new CompilerMSVC( Version.VC8 );
+			case VC9:
+				return new CompilerMSVC( Version.VC9 );
+			case VC10:
+				return new CompilerMSVC( Version.VC10 );
 			default:
 				throw new BuildException( "unsupported compiler type: " + type );
 		}
@@ -53,8 +85,14 @@ public enum CompilerType
 			return CompilerType.GCC;
 		else if( string.equalsIgnoreCase("g++") )
 			return CompilerType.GPP;
-		else if( string.equalsIgnoreCase("msvc") )
-			return CompilerType.MSVC;
+		else if( string.equalsIgnoreCase("vc7") )
+			return CompilerType.VC7;
+		else if( string.equalsIgnoreCase("vc8") )
+			return CompilerType.VC8;
+		else if( string.equalsIgnoreCase("vc9") )
+			return CompilerType.VC9;
+		else if( string.equalsIgnoreCase("vc10") )
+			return CompilerType.VC10;
 		else
 			throw new BuildException( "Unknown compiler type: " + string );
 	}

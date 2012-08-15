@@ -20,6 +20,11 @@ to pass to the compiler to get it to do what you want, and provides only
 help for specifying source, include and library paths, but that's about
 it.
 
+License
+-------------------------
+The cpptask project is provided an Open Source Software and released
+under the Common Developer and Distribution License (CDDL).
+
 Usage Example
 -------------------------
 To make the task available in your build, you must ensure that the
@@ -36,15 +41,15 @@ Consider the example Ant build snippet below:
          objdir="${build.dir}/obj"
          outtype="executable"
          compiler="g++"
-         compilerArgs="-g -arch i386 -O2 -fPIC -Wall -Wno-non-virtual-dtor"
-         linkerArgs="-framework JavaVM -arch i386">
-	<fileset dir="${test13.src.dir}" includes="**/*.cpp"/>
-	<includepath path="${hla13.include.dir}/ng6"/>
-	<includepath path="${hla13.src.dir}/hla/time"/>
-	<includepath path="${cppunit.include}"/>
-	<define name="RTI_USES_STD_FSTREAM"/>
-	<library path="${ng6.complete.dir}" libs="RTI-NG"/>
-	<library path="${cppunit.lib}" libs="cppunit"/>
+         compilerArgs="-g"
+         linkerArgs="-arch i386">
+    <fileset dir="${test13.src.dir}" includes="**/*.cpp"/>
+    <includepath path="${hla13.include.dir}/ng6"/>
+    <includepath path="${hla13.src.dir}/hla/time"/>
+    <includepath path="${cppunit.include}"/>
+    <define name="RTI_USES_STD_FSTREAM"/>
+    <library path="${ng6.complete.dir}" libs="RTI-NG"/>
+    <library path="${cppunit.lib}" libs="cppunit"/>
 </cpptask>
 
 This compiles all the selected code from the ${hla13.src.dir}, using

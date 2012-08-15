@@ -29,6 +29,7 @@ import org.apache.tools.ant.taskdefs.Execute;
 import org.apache.tools.ant.taskdefs.LogStreamHandler;
 import org.apache.tools.ant.types.Commandline;
 
+import com.lbf.cpptask.Arch;
 import com.lbf.cpptask.BuildConfiguration;
 import com.lbf.cpptask.Compiler;
 import com.lbf.cpptask.Define;
@@ -46,6 +47,7 @@ public class CompilerMSVC implements Compiler
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
+	private Version version;
 	private BuildConfiguration configuration;
 	private Task task;
 
@@ -53,8 +55,10 @@ public class CompilerMSVC implements Compiler
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
 
-	public CompilerMSVC()
+	public CompilerMSVC( Version version )
 	{
+		this.version = version;
+
 		// update the Utilities with object file extension
 		Utilities.O_EXTENSION = ".obj";
 	}
@@ -80,21 +84,92 @@ public class CompilerMSVC implements Compiler
 		if( configuration.getOutputFile() != null )
 			link();
 	}
-	
+
 	/**
-	 * Prepends the precommand to the front of the command line if it exists in the
-	 * {@link BuildConfiguration}. The precommand will be executed before the command.
+	 * This method takes the base command line and prepends to it:
+	 * <ul>
+	 *   <li>The Visual Studio environment setup calls (vcvarsall.bat)</li>
+	 *   <li>Any pre-commands coming from the task</li>
+	 * </ul>
+	 * @param baseCommand
+	 * @return
 	 */
-	private String[] prependPreCommand( String[] commandline )
+	private String[] prepareFullCommandLine( String[] baseCommand )
 	{
-		if( configuration.getPreCommand() == null )
-			return commandline;
+		// 1. Get a reference to the Visual Studio environment setup file and argument
+		//    The argument we provide depends on the operating system we are on and the
+		//    bitness of what we are targeting. If we are on 32- or 64-bit systems and
+		//    targeting the same, all is normal. If we are on 32-bit and targeting 64-bit
+		//    we need to use a special cross compiler
+		String vcvarsall = this.version.getVcvarsallBatchFile();
+		String outputArch = getCompilerArchitecture();
 		
-		String[] temp = new String[2+commandline.length];
-		temp[0] = configuration.getPreCommand();
-		temp[1] = "&&";
-		System.arraycopy( commandline, 0, temp, 2, commandline.length );
-		return temp;
+		// 2. Get the pre-command stored in the build configuration
+		String precommand = configuration.getPreCommand();
+		
+		// 3. Throw all the commands together into one big command line
+		ArrayList<String> fullCommand = new ArrayList<String>();
+		// vs environment
+		fullCommand.add( vcvarsall );
+		fullCommand.add( outputArch );
+		fullCommand.add( "&&" );
+		// pre-command
+		if( precommand != null )
+		{
+			String[] precommands = configuration.getPreCommand().split( "\\s+" );
+			for( String temp : precommands )
+				fullCommand.add( temp );
+			fullCommand.add( "&&" );
+		}
+		// base command line
+		for( String temp : baseCommand )
+			fullCommand.add( temp );
+
+		return fullCommand.toArray( new String[0] );
+	}
+
+	/**
+	 * Return the type of compiler we need to use. Calculated as follows:
+	 * <ul>
+	 *   <li>If we are on a 32-bit system and building a 32-bit target: return x86</li>
+	 *   <li>If we are on a 64-bit system and building a 64-bit target: return amd64</li>
+	 *   <li>If we are on a 32-bit system and building a 64-bit target: return x86_amd64</li>
+	 * </ul>
+	 */
+	private String getCompilerArchitecture()
+	{
+		Arch osArch = Arch.getOsArch();
+		Arch outArch = configuration.getOutputArch();
+		if( osArch == Arch.x86 )
+		{
+			if( outArch == Arch.x86 )
+			{
+				task.log( "Building 32-bit target on 32-bit system. Using x86 compiler.",
+				          Project.MSG_VERBOSE );
+				return "x86";
+			}
+			else
+			{
+				task.log( "Building 64-bit target on 32-bit system. Using x86_amd64 cross-compiler.",
+				          Project.MSG_VERBOSE );
+				return "x86_amd64";
+			}
+		}
+		else
+		{
+			if( outArch == Arch.x86 )
+			{
+				task.log( "Building 32-bit target on 64-bit system. Using x86 compiler.",
+				          Project.MSG_VERBOSE);
+				return "x86";
+			}
+			else
+			{
+				task.log( "Building 64-bit target on 64-bit system. Using amd64 compiler.",
+				          Project.MSG_VERBOSE );
+				return "amd64";
+			}
+		}
 	}
 
 	/**
@@ -203,16 +278,17 @@ public class CompilerMSVC implements Compiler
 		Execute runner = new Execute( new LogStreamHandler(configuration.getTask(),
 		                                                   Project.MSG_INFO,
 		                                                   Project.MSG_WARN) );
-		runner.setCommandline( prependPreCommand(command.getCommandline()) );
+		
+		runner.setCommandline( prepareFullCommandLine(command.getCommandline()) );
 		runner.setWorkingDirectory( configuration.getObjectDirectory() );
 		try
 		{
 			// log what we're doing
 			task.log( "Starting Compile" );
-			task.log( "Running compile command: ", Project.MSG_DEBUG );
-			for( String argument : command.getCommandline() )
-				task.log( argument, Project.MSG_DEBUG );
-				
+			task.log( "Running compile command: ", Project.MSG_VERBOSE );
+			for( String argument : runner.getCommandline() )
+				task.log( argument, Project.MSG_VERBOSE );
+
 			int exitValue = runner.execute();
 			if( exitValue != 0 )
 			{
@@ -271,7 +347,7 @@ public class CompilerMSVC implements Compiler
 		                                                    Project.MSG_INFO,
 		                                                    Project.MSG_WARN) );
 		
-		runner.setCommandline( prependPreCommand(commandline.getCommandline()) );
+		runner.setCommandline( prepareFullCommandLine(commandline.getCommandline()) );
 		runner.setWorkingDirectory( configuration.getOutputFile().getParentFile() );
 
 		// run the command

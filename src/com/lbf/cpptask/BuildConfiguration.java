@@ -43,6 +43,7 @@ public class BuildConfiguration
 	private CompilerType compilerType;
 	private String preCommand;
 	private OutputType outputType;
+	private Arch outputArch;
 	private File objectDirectory;
 	private File outputFile;
 	private boolean failOnError;
@@ -66,11 +67,12 @@ public class BuildConfiguration
 		// initialize the values
 		// set defaults
 		if( System.getProperty("os.name").toUpperCase().contains("WINDOWS") )
-			this.compilerType = CompilerType.MSVC;
+			this.compilerType = CompilerType.VC10;
 		else
 			this.compilerType = CompilerType.GCC;
 		
 		this.outputType      = OutputType.EXECUTABLE;
+		this.outputArch      = Arch.getOsArch();
 		this.objectDirectory = getProject().getBaseDir();
 		// this.outputFile   = null;
 		this.failOnError     = true;
@@ -134,6 +136,16 @@ public class BuildConfiguration
 	public void setOutputType( OutputType outputType )
 	{
 		this.outputType = outputType;
+	}
+	
+	public Arch getOutputArch()
+	{
+		return this.outputArch;
+	}
+	
+	public void setOutputArch( Arch outputArch )
+	{
+		this.outputArch = outputArch;
 	}
 
 	public File getObjectDirectory()

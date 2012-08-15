@@ -76,7 +76,7 @@ public class ConditionalExecutor extends Task implements TaskContainer
 	 * the <code>failOnError</code> attribute is enabled, <code>false</code> isn't returned, but
 	 * rather an exception is thrown to kill the build.
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	private boolean shouldExecute() throws BuildException
 	{
 		// make sure all the required properties are present

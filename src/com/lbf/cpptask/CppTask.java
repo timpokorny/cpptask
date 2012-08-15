@@ -32,6 +32,7 @@ import org.apache.tools.ant.types.FileSet;
  *           compilerExe=""    // location of the executable to use (only for MSVC)
  *           linkerExe=""      // location of the linker executable to use (only for MSVC)
  *           outtype=""        // shared, executable
+ *           outarch=""        // x86 or amd64
  *           objdir=""         // directory to store object files in
  *           incremental=""    // should things be compiled incrementally
  *           compilerArgs=""   // additional arguments that should be used for each compile
@@ -107,6 +108,7 @@ public class CppTask extends Task
 		log( "compiler      : " + configuration.getCompilerType(), Project.MSG_VERBOSE );
 		log( "preCommand    : " + configuration.getPreCommand(), Project.MSG_VERBOSE );
 		log( "outputType    : " + configuration.getOutputType(), Project.MSG_VERBOSE );
+		log( "outputArch    : " + configuration.getOutputArch(), Project.MSG_DEBUG );
 		log( "objectDir     : " + configuration.getObjectDirectory(), Project.MSG_VERBOSE );
 		log( "outputFile    : " + configuration.getOutputFile(), Project.MSG_VERBOSE );
 		log( "failOnError   : " + configuration.isFailOnError(), Project.MSG_VERBOSE );
@@ -196,6 +198,14 @@ public class CppTask extends Task
 	public void setOutType( OutputTypeAntEnum type )
 	{
 		configuration.setOutputType( OutputType.valueOf(type.getValue().toUpperCase()) );
+	}
+
+	/**
+	 * Sets the output type of the library or exe we are building.
+	 */
+	public void setOutArch( OutputArchAntEnum arch )
+	{
+		configuration.setOutputArch( Arch.valueOf(arch.getValue().toLowerCase()) );
 	}
 
 	/**
@@ -300,7 +310,12 @@ public class CppTask extends Task
 	{
 		public String[] getValues()
 		{
-			return new String[]{ "gcc", "g++", "msvc" };
+			//return new String[]{ "gcc", "g++", "msvc" };
+			ArrayList<String> values = new ArrayList<String>();
+			for( CompilerType type : CompilerType.values() )
+				values.add( type.toString().toLowerCase() );
+			
+			return values.toArray( new String[0] );
 		}
 	}
 
@@ -315,6 +330,21 @@ public class CppTask extends Task
 			ArrayList<String> values = new ArrayList<String>();
 			for( OutputType type : OutputType.values() )
 				values.add( type.toString().toLowerCase() );
+			
+			return values.toArray( new String[0] );
+		}
+	}
+
+	/**
+	 * Ant enumeration to specify the value values for the output architecture type.
+	 */
+	public static class OutputArchAntEnum extends EnumeratedAttribute
+	{
+		public String[] getValues()
+		{
+			ArrayList<String> values = new ArrayList<String>();
+			for( Arch arch : Arch.values() )
+				values.add( arch.toString().toLowerCase() );
 			
 			return values.toArray( new String[0] );
 		}
