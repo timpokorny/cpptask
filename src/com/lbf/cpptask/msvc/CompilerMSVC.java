@@ -424,6 +424,8 @@ public class CompilerMSVC implements Compiler
 		// locate each library
 		for( String libToFind : linkWith )
 		{
+			task.log( "Beginning search for ["+libToFind+"]", Project.MSG_VERBOSE );
+			
 			// all libraries should have a ".lib" as their file type
 			// some libraries will have "lib" on the front as well (e.g. libRTI-NG.lib)
 			// thus, we should check for both forms (with and without "lib" on the front)
@@ -435,23 +437,27 @@ public class CompilerMSVC implements Compiler
 			{
 				// without "lib" on the front
 				File possible = new File( path + Utilities.FILE_SEPARATOR + libToFind );
+				task.log( "[check] "+possible, Project.MSG_DEBUG );
 				if( possible.exists() )
 				{
 					// found it!
 					found = true;
 					returnArray.add( possible.getAbsolutePath() );
 					//commandline.createArgument().setFile( possible );
+					task.log( "[located] "+possible, Project.MSG_DEBUG );
 					break;
 				}
 				
 				// regular doesn't exist, try with "lib" on front
 				possible = new File( path + Utilities.FILE_SEPARATOR + "lib" + libToFind );
+				task.log( "[check] "+possible, Project.MSG_DEBUG );
 				if( possible.exists() )
 				{
 					// found it now :)
 					found = true;
 					returnArray.add( possible.getAbsolutePath() );
 					//commandline.createArgument().setFile( possible );
+					task.log( "[located] "+possible, Project.MSG_DEBUG );
 					break;
 				}
 			}
