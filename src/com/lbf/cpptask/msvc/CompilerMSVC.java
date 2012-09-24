@@ -444,7 +444,7 @@ public class CompilerMSVC implements Compiler
 					found = true;
 					returnArray.add( possible.getAbsolutePath() );
 					//commandline.createArgument().setFile( possible );
-					task.log( "[located] "+possible, Project.MSG_DEBUG );
+					task.log( "[located] "+possible, Project.MSG_VERBOSE );
 					break;
 				}
 				
@@ -457,7 +457,7 @@ public class CompilerMSVC implements Compiler
 					found = true;
 					returnArray.add( possible.getAbsolutePath() );
 					//commandline.createArgument().setFile( possible );
-					task.log( "[located] "+possible, Project.MSG_DEBUG );
+					task.log( "[located] "+possible, Project.MSG_VERBOSE );
 					break;
 				}
 			}
