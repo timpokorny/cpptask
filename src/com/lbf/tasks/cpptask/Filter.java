@@ -12,16 +12,12 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.StringTokenizer;
+import java.io.File;
+import java.io.FilenameFilter;
 
-import org.apache.tools.ant.types.Path;
-
-
-public class Library
+public class Filter implements FilenameFilter
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -30,49 +26,25 @@ public class Library
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
-	private Path path;
-	private Set<String> libs;
+	private String localName;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
-
-	public Library()
+	public Filter( String localName )
 	{
-		this.libs = new HashSet<String>();
+		this.localName = localName;
 	}
 
 	//----------------------------------------------------------
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
-
-	public void setPath( Path givenPath )
+	public boolean accept( File dir, String name )
 	{
-		this.path = givenPath;
-	}
-
-	public Path getPath()
-	{
-		return this.path;
-	}
-
-	public void setLibs( String libString )
-	{
-		// make sure it isn't null (not even sure if this can happen)
-		if( libString == null )
-			return;
-		
-		// break the string down with ',' as a delimiter
-		StringTokenizer tokenizer = new StringTokenizer( libString, "," );
-		while( tokenizer.hasMoreElements() )
-		{
-			this.libs.add( tokenizer.nextToken() );
-		}
-	}
-
-	public Set<String> getLibs()
-	{
-		return this.libs;
+		if( name.startsWith(localName) )
+	    		return true;
+	    	else
+	    		return false;
 	}
 
 	//----------------------------------------------------------

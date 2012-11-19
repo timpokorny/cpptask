@@ -12,7 +12,7 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -20,6 +20,8 @@ import java.util.List;
 
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.FileSet;
+
+import com.lbf.tasks.utils.Arch;
 
 /**
  * The {@link BuildConfiguration} class holds all the information that was extracted from the

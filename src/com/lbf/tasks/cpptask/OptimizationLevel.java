@@ -12,10 +12,10 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
 
-public enum OutputType
+public enum OptimizationLevel
 {
-	EXECUTABLE,
-	SHARED;
+	DEFAULT,
+	FULL;
 }

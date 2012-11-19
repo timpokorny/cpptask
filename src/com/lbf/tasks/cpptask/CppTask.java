@@ -1,4 +1,4 @@
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
 /*
  *   Copyright 2007 littlebluefroglabs.com
  *
@@ -22,6 +22,8 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.EnumeratedAttribute;
 import org.apache.tools.ant.types.FileSet;
+
+import com.lbf.tasks.utils.Arch;
 
 /**
  * Example of Task usage:

@@ -12,19 +12,19 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.tasks.utils;
+package com.lbf.tasks.string;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
 
+import com.lbf.tasks.utils.PropertyUtils;
+
 /**
- * This class will replace all occurances of a given string in another given string and will
- * set the result in the property identified. It also has the ability to override the mutable
- * aspect of ant properties. It is meant for cases when simple find/replace behaviour is needed.
- * The primary motivating case was to take a java package name and convert it into a path
- * (converting all the "." into "/").
+ * This task takes a package name and returns just the local portion of it, setting the value in
+ * the identified property. For example, if the package name "com.lbf.tasks" were passed, the
+ * value of the identified property would be set to "tasks".
  */
-public class StringReplace extends Task
+public class LocalPackage extends Task
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -34,9 +34,7 @@ public class StringReplace extends Task
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
 	private String property;
-	private String input;
-	private String find;
-	private String replace;
+	private String packageName;
 	private boolean overwrite = false;
 
 	//----------------------------------------------------------
@@ -52,23 +50,20 @@ public class StringReplace extends Task
 		// check to see that all the values are set
 		checkValues();
 		
+		// get the package name
+		int lastIndex = packageName.lastIndexOf( "." );
+		String localName = packageName.substring( lastIndex+1, packageName.length() );
+		
 		// do the replacement and set the value
-		Utils.setProjectProperty( super.getProject(),
-		                          property,
-		                          input.replace(find,replace),
-		                          overwrite );
+		PropertyUtils.setProjectProperty( super.getProject(), property, localName, overwrite );
 	}
 
 	private void checkValues()
 	{
 		if( this.property == null )
 			throw new BuildException( "Must set the \"property\" attribute" );
-		else if( this.input == null )
-			throw new BuildException( "Must set the \"input\" attribute" );
-		else if( this.find == null )
-			throw new BuildException( "Must set the \"find\" attribute" );
-		else if( this.replace == null )
-			throw new BuildException( "Must set the \"replace\" attribute" );
+		else if( this.packageName == null )
+			throw new BuildException( "Must set the \"package\" attribute" );
 	}
 	
 	////////////////////////////////////////////////////////////
@@ -79,19 +74,9 @@ public class StringReplace extends Task
 		this.property = property;
 	}
 	
-	public void setInput( String input )
+	public void setPackage( String packageName )
 	{
-		this.input = input;
-	}
-	
-	public void setFind( String find )
-	{
-		this.find = find;
-	}
-
-	public void setReplace( String replace )
-	{
-		this.replace = replace;
+		this.packageName = packageName;
 	}
 	
 	public void setOverwrite( boolean overwrite )
@@ -102,4 +87,5 @@ public class StringReplace extends Task
 	//----------------------------------------------------------
 	//                     STATIC METHODS
 	//----------------------------------------------------------
+
 }

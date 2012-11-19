@@ -1,5 +1,5 @@
 /*
- *   Copyright 2007 littlebluefroglabs.com
+ *   Copyright 2008 littlebluefroglabs.com
  *
  *   This file is part of cpptask.
  *
@@ -12,9 +12,12 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.utils;
 
-public class Define
+import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.Project;
+
+public class PropertyUtils
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -23,7 +26,6 @@ public class Define
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
-	private String name;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
@@ -33,17 +35,34 @@ public class Define
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
 
-	public void setName( String name )
-	{
-		this.name = name;
-	}
-
-	public String getName()
-	{
-		return this.name;
-	}
-
 	//----------------------------------------------------------
 	//                     STATIC METHODS
 	//----------------------------------------------------------
+	/**
+	 * Sets the given project property to the given value. If the property is already set, it will
+	 * only be overwritten if the <code>overwrite</code> parameter is set. If it is set and
+	 * overwrite is false, an exception will be thrown.
+	 * 
+	 * @param name The name of the property to set
+	 * @param value The value to set the property to
+	 * @param overwrite Whether or not the property should be overwritten if it is already set
+	 */
+	public static void setProjectProperty( Project project,
+	                                       String name,
+	                                       String value,
+	                                       boolean overwrite )
+	{
+		if( project.getProperty(name) == null )
+		{
+			project.setProperty( name, value );
+		}
+		else if( overwrite )
+		{
+			project.setUserProperty( name, value );
+		}
+		else
+		{
+			throw new BuildException( "Property \""+name+"\" already set" );
+		}
+	}
 }

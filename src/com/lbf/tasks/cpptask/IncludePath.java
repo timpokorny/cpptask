@@ -12,12 +12,11 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
 
-import java.io.File;
-import java.io.FilenameFilter;
+import org.apache.tools.ant.types.Path;
 
-public class Filter implements FilenameFilter
+public class IncludePath
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -26,25 +25,32 @@ public class Filter implements FilenameFilter
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
-	private String localName;
+	private Path path;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
-	public Filter( String localName )
+
+	public IncludePath()
 	{
-		this.localName = localName;
 	}
 
 	//----------------------------------------------------------
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
-	public boolean accept( File dir, String name )
+
+	/**
+	 * A path to an include directory. This path can be delimited by either the ";" or ":"
+	 * characters.
+	 */
+	public void setPath( Path givenPath )
 	{
-		if( name.startsWith(localName) )
-	    		return true;
-	    	else
-	    		return false;
+		this.path = givenPath;
+	}
+
+	public Path getPath()
+	{
+		return this.path;
 	}
 
 	//----------------------------------------------------------

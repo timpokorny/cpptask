@@ -12,7 +12,7 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
 
 import java.io.File;
 import java.util.ArrayList;

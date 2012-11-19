@@ -12,13 +12,13 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
 
 import org.apache.tools.ant.BuildException;
 
-import com.lbf.cpptask.gcc.CompilerGCC;
-import com.lbf.cpptask.msvc.CompilerMSVC;
-import com.lbf.cpptask.msvc.Version;
+import com.lbf.tasks.cpptask.gcc.CompilerGCC;
+import com.lbf.tasks.cpptask.msvc.CompilerMSVC;
+import com.lbf.tasks.cpptask.msvc.Version;
 
 public enum CompilerType
 {

@@ -18,18 +18,24 @@
  *   specific language governing permissions and limitations
  *   under the License.
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.utils;
+
+import org.apache.tools.ant.BuildException;
 
 /**
- * Enumeration to represent architecture we are building for.
+ * This enumeration represents a particular Platform (where a Platform is a combination of
+ * operating system and underlying architecture).
  */
-public enum Arch
+public enum Platform
 {
 	//----------------------------------------------------------
 	//                    ENUMERATED VALUES
 	//----------------------------------------------------------
-	x86,
-	amd64;
+	macosx,
+	win32,
+	win64,
+	linux32,
+	linux64;
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
@@ -42,38 +48,53 @@ public enum Arch
 	//----------------------------------------------------------
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
+	
+	////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////// Accessor and Mutator Methods ///////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////
+	public boolean isLinux()
+	{
+		return this == linux32 || this == linux64;
+	}
+
+	public boolean isWindows()
+	{
+		return this == win32 || this == win64;
+	}
+	
+	public boolean isMac()
+	{
+		return this == macosx;
+	}
 
 	//----------------------------------------------------------
 	//                     STATIC METHODS
 	//----------------------------------------------------------
-	/**
-	 * @return The underlying architecture of the operating system. Actually this just
-	 *         returns the underlying architecture of the JVM at this point, as it queries
-	 *         the system property "os.arch" (which is the jvm architecture, not the os,
-	 *         oddly enough).
-	 */
-	public static Arch getOsArch()
+	public static Platform getOsPlatform() throws BuildException
 	{
-		String osarch = System.getProperty( "os.arch" );
-		// 32-bit architectures
-		if( osarch.equals("x86") )
-			return x86;
-		else if( osarch.equals("i386") )
-			return x86;
-		else if( osarch.equals("i586") )
-			return x86;
-		else if( osarch.equals("i686") )
-			return x86;
-
-		// 64-bit architectures
-		else if( osarch.equals("amd64") )
-			return amd64;
-		else if( osarch.equals("x86_64") )
-			return amd64;
-		else if( osarch.equals("x64") )
-			return amd64;
-
-		// at worst, default to 32-bit
-		return x86;
+		Arch architecture = Arch.getOsArch();
+		String osname = System.getProperty( "os.name" );
+		if( osname.contains("indows") )
+		{
+			if( architecture == Arch.x86 )
+				return Platform.win32;
+			else
+				return Platform.win64;
+		}
+		else if( osname.contains("Mac") )
+		{
+			return Platform.macosx;
+		}
+		else if( osname.contains("inux") )
+		{
+			if( architecture == Arch.x86 )
+				return Platform.linux32;
+			else
+				return Platform.linux64;
+		}
+		else
+		{
+			throw new BuildException( "Unable to determine the Platform. Unknown OS: "+osname );
+		}
 	}
 }

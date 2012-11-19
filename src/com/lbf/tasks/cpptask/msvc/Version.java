@@ -18,7 +18,7 @@
  *   specific language governing permissions and limitations
  *   under the License.
  */
-package com.lbf.cpptask.msvc;
+package com.lbf.tasks.cpptask.msvc;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,7 +65,7 @@ public enum Version
 	}
 
 	/**
-	 * This method returns the patch to the vcvarsall.bat batch file for the selected
+	 * This method returns the path to the vcvarsall.bat batch file for the selected
 	 * Visual Studio version.
 	 * <p/>
 	 * This location is based off the location pointed to by an environment variable
@@ -82,8 +82,8 @@ public enum Version
 		String vcDirectory = System.getenv( getToolsEnvironmentVariable() );
 		if( vcDirectory == null )
 		{
-			throw new RuntimeException( "Visual Studio tools environment variable missing ("+
-			                            environmentVariable+"): Required to locate install dir" );
+			throw new RuntimeException( "Visual Studio tools missing: %"+
+			                            environmentVariable+"% Required to locate install dir" );
 		}
 		
 		// the tools directory isn't actually what we want - we want to jump up

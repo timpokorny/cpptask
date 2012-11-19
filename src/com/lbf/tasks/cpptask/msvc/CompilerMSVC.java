@@ -12,7 +12,7 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask.msvc;
+package com.lbf.tasks.cpptask.msvc;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,14 +29,14 @@ import org.apache.tools.ant.taskdefs.Execute;
 import org.apache.tools.ant.taskdefs.LogStreamHandler;
 import org.apache.tools.ant.types.Commandline;
 
-import com.lbf.cpptask.Arch;
-import com.lbf.cpptask.BuildConfiguration;
-import com.lbf.cpptask.Compiler;
-import com.lbf.cpptask.Define;
-import com.lbf.cpptask.IncludePath;
-import com.lbf.cpptask.Library;
-import com.lbf.cpptask.OutputType;
-import com.lbf.cpptask.Utilities;
+import com.lbf.tasks.cpptask.BuildConfiguration;
+import com.lbf.tasks.cpptask.Compiler;
+import com.lbf.tasks.cpptask.Define;
+import com.lbf.tasks.cpptask.IncludePath;
+import com.lbf.tasks.cpptask.Library;
+import com.lbf.tasks.cpptask.OutputType;
+import com.lbf.tasks.cpptask.Utilities;
+import com.lbf.tasks.utils.Arch;
 
 public class CompilerMSVC implements Compiler
 {

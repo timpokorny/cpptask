@@ -12,11 +12,16 @@
  *   (that goes for your lawyer as well)
  *
  */
-package com.lbf.cpptask;
+package com.lbf.tasks.cpptask;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.StringTokenizer;
 
 import org.apache.tools.ant.types.Path;
 
-public class IncludePath
+
+public class Library
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -26,23 +31,21 @@ public class IncludePath
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
 	private Path path;
+	private Set<String> libs;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
 
-	public IncludePath()
+	public Library()
 	{
+		this.libs = new HashSet<String>();
 	}
 
 	//----------------------------------------------------------
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
 
-	/**
-	 * A path to an include directory. This path can be delimited by either the ";" or ":"
-	 * characters.
-	 */
 	public void setPath( Path givenPath )
 	{
 		this.path = givenPath;
@@ -51,6 +54,25 @@ public class IncludePath
 	public Path getPath()
 	{
 		return this.path;
+	}
+
+	public void setLibs( String libString )
+	{
+		// make sure it isn't null (not even sure if this can happen)
+		if( libString == null )
+			return;
+		
+		// break the string down with ',' as a delimiter
+		StringTokenizer tokenizer = new StringTokenizer( libString, "," );
+		while( tokenizer.hasMoreElements() )
+		{
+			this.libs.add( tokenizer.nextToken() );
+		}
+	}
+
+	public Set<String> getLibs()
+	{
+		return this.libs;
 	}
 
 	//----------------------------------------------------------
