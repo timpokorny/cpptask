@@ -392,7 +392,7 @@ public class GetJdkTask extends Task
 	/**
 	 * The target platform type we'd like to use (should more 32-bit and 64-bit be available)
 	 */
-	public void setArchitecture( OutputArchAntEnum arch )
+	public void setArch( OutputArchAntEnum arch )
 	{
 		this.architecture = Arch.valueOf( arch.getValue().toLowerCase() );
 	}
