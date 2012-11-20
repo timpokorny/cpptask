@@ -79,22 +79,27 @@ public class GetOsPlatformTask extends Task
 		switch( platform )
 		{
 			case win32:
+				this.properties.put( "platform", "win32" );
 				this.properties.put( "windows", "true" );
 				this.properties.put( "win32", "true" );
 				break;
 			case win64:
+				this.properties.put( "platform", "win64" );
 				this.properties.put( "windows", "true" );
 				this.properties.put( "win64", "true" );
 				break;
 			case macosx:
+				this.properties.put( "platform", "macosx" );
 				this.properties.put( "macosx", "true" );
 				this.properties.put( "platform", "macosx" );
 				break;
 			case linux32:
+				this.properties.put( "platform", "linux32" );
 				this.properties.put( "linux32", "true" );
 				this.properties.put( "platform", "linux32" );
 				break;
 			case linux64:
+				this.properties.put( "platform", "linux64" );
 				this.properties.put( "linux64", "true" );
 				this.properties.put( "platform", "linux64" );
 				break;

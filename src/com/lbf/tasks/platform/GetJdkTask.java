@@ -200,7 +200,7 @@ public class GetJdkTask extends Task
 				throw new BuildException( "Fallback location does not point to a JDK. "+
 				                          "No JDK installed on system at location: "+fallback );
 			}
-			else if( containsJdkForArchitecture(existingLocation,architecture) == false )
+			else if( containsJdkForArchitecture(fallback,architecture) == false )
 			{
 				throw new BuildException( "Fallback location points to a JDK of wrong architecture. "+
 				                          "Desired architecture is ["+architecture+"], location: "+
