@@ -256,7 +256,7 @@ public class CompilerMSVC implements Compiler
 		fullCommand.add( outputArch );
 		fullCommand.add( "&&" );
 		// pre-command
-		if( precommand != null )
+		if( (precommand != null) && (precommand.trim().isEmpty() == false) )
 		{
 			String[] precommands = configuration.getPreCommand().split( "\\s+" );
 			for( String temp : precommands )
