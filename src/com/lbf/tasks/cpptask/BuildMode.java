@@ -17,7 +17,7 @@ package com.lbf.tasks.cpptask;
 /**
  * The type of build that is being executed. Is it a debug build, a release build or both?
  */
-public enum BuildType
+public enum BuildMode
 {
 	DEBUG,
 	RELEASE,

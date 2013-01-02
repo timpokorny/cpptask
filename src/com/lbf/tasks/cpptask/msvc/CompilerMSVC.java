@@ -90,10 +90,10 @@ public class CompilerMSVC implements Compiler
 		// run the linker
 		if( configuration.getOutputFile() != null )
 		{
-    		if( configuration.getBuildType().includesDebug() )
+    		if( configuration.getBuildMode().includesDebug() )
     			link( true );
     
-    		if( configuration.getBuildType().includesRelease() )
+    		if( configuration.getBuildMode().includesRelease() )
     			link( false );
 		}
 	}

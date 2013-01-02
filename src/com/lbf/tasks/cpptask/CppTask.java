@@ -28,28 +28,26 @@ import com.lbf.tasks.utils.Arch;
 /**
  * Example of Task usage:
  * 
- *  <cpptask failonerror=""
- *           outfile=""        // output file name
- *           compiler=""       // name of the compiler to use
- *           compilerExe=""    // location of the executable to use (only for MSVC)
- *           linkerExe=""      // location of the linker executable to use (only for MSVC)
- *           outtype=""        // shared, executable
- *           outarch=""        // x86 or amd64
- *           buildDebugLibs="" // build both release and debug libraries (called libnameD.dll/lib)
- *           objdir=""         // directory to store object files in
- *           incremental=""    // should things be compiled incrementally
- *           compilerArgs=""   // additional arguments that should be used for each compile
- *           linkerArgs=""     // additional arguments that should be used for linking
+ *  <cpptask outfile=""       // (required) output file name (just the name)
+ *           workdir=""       // (required) where the task will compile the source to
+ *           outdir=""        // location for completed library/exe (defaults to workdir/complete)
+ *           type=""          // type of artefact to build (shared, static, executable)
+ *           arch=""          // output architecture (defaults to same as the OS)
+ *           mode=""          // build mode (debug, release, both) - debug libs renamed (e.g. outfileD.dll)
+ *           compiler=""      // name of the compiler to use (gcc, g++, vc8, vc9, vc10)
+ *           compilerArgs=""  // additional arguments that should be used for each compile
+ *           linkerArgs=""    // additional arguments that should be used for linking
+ *           preCommand=""    // command to prepend to all compile and link commands
+ *           incremental=""   // should things be compiled incrementally
+ *           failOnError=""   // fail the build on an error (defaults to true)
  *  >
- *
- *      <fileset...>                 // fileset that contains source code
- *      <includepath path=""/>
- *      <define name=""/>
+ *      <fileset...>                // fileset that contains source code
+ *      <includepath path=""/>      // paths for include files (can have many)
+ *      <define name=""/>           // compiler symbol definition
  *      
- *      <library path=""/>
- *      <library libs=""/>
- *      <library path="" libs=""/>   //
- *      
+ *      <library libs=""/>          // names of libraries to link with
+ *      <library path=""/>          // paths to library file to link with
+ *      <library path="" libs=""/>  // combination of the above
  *  </cpptask>
  *
  */
@@ -112,18 +110,18 @@ public class CppTask extends Task
 	 */
 	private void logValues()
 	{
-		log( "compiler        : " + configuration.getCompilerType(), Project.MSG_VERBOSE );
-		log( "preCommand      : " + configuration.getPreCommand(), Project.MSG_VERBOSE );
-		log( "compiler args   : " + configuration.getCompilerArgs(), Project.MSG_VERBOSE );
-		log( "linker args     : " + configuration.getLinkerArgs(), Project.MSG_VERBOSE );
-		log( "outputName      : " + configuration.getOutputName(), Project.MSG_VERBOSE );
-		log( "outputType      : " + configuration.getOutputType(), Project.MSG_VERBOSE );
-		log( "outputArch      : " + configuration.getOutputArch(), Project.MSG_DEBUG );
-		log( "buildType       : " + configuration.getBuildType(), Project.MSG_DEBUG );
-		log( "outputDirectory : " + configuration.getOutputDirectory(), Project.MSG_DEBUG );
-		log( "workingDirectory: " + configuration.getWorkingDirectory(), Project.MSG_DEBUG );
-		log( "failOnError   : " + configuration.isFailOnError(), Project.MSG_VERBOSE );
+		log( "compiler      : " + configuration.getCompilerType(), Project.MSG_VERBOSE );
+		log( "preCommand    : " + configuration.getPreCommand(), Project.MSG_VERBOSE );
+		log( "compiler args : " + configuration.getCompilerArgs(), Project.MSG_VERBOSE );
+		log( "linker args   : " + configuration.getLinkerArgs(), Project.MSG_VERBOSE );
+		log( "mode          : " + configuration.getBuildMode(), Project.MSG_DEBUG );
+		log( "outfile       : " + configuration.getOutputName(), Project.MSG_VERBOSE );
+		log( "workdir       : " + configuration.getWorkingDirectory(), Project.MSG_DEBUG );
+		log( "outdir        : " + configuration.getOutputDirectory(), Project.MSG_DEBUG );
+		log( "type          : " + configuration.getOutputType(), Project.MSG_VERBOSE );
+		log( "arch          : " + configuration.getOutputArch(), Project.MSG_DEBUG );
 		log( "incremental   : " + configuration.isIncremental(), Project.MSG_VERBOSE );
+		log( "failOnError   : " + configuration.isFailOnError(), Project.MSG_VERBOSE );
 
 		log( "source to be compiled:", Project.MSG_VERBOSE );
 		for( FileSet set : configuration.getSourceFiles() )
@@ -184,7 +182,7 @@ public class CppTask extends Task
 	/**
 	 * Sets the name of the output file to build
 	 */
-	public void setOutputName( String outputName )
+	public void setOutfile( String outputName )
 	{
 		configuration.setOutputName( outputName );
 	}
@@ -193,7 +191,7 @@ public class CppTask extends Task
 	 * Set the location to put all the working files (the task will build
 	 * a hierarchy under this directory). Defaults to "[outputDirectory]/working"
 	 */
-	public void setWorkingDirectory( File workingDirectory )
+	public void setWorkdir( File workingDirectory )
 	{
 		configuration.setWorkingDirectory( workingDirectory );
 	}
@@ -201,7 +199,7 @@ public class CppTask extends Task
 	/**
 	 * Set the location to dump the completed files
 	 */
-	public void setOutputDirectory( File outputDirectory )
+	public void setOutdir( File outputDirectory )
 	{
 		configuration.setOutputDirectory( outputDirectory );
 	}
@@ -209,7 +207,7 @@ public class CppTask extends Task
 	/**
 	 * Sets the output type that should be build (shared library, executable...)
 	 */
-	public void setOutputType( OutputTypeAntEnum type )
+	public void setType( OutputTypeAntEnum type )
 	{
 		configuration.setOutputType( OutputType.valueOf(type.getValue().toUpperCase()) );
 	}
@@ -217,7 +215,7 @@ public class CppTask extends Task
 	/**
 	 * Sets the output type of the library or exe we are building.
 	 */
-	public void setOutputArch( OutputArchAntEnum arch )
+	public void setArch( OutputArchAntEnum arch )
 	{
 		configuration.setOutputArch( Arch.valueOf(arch.getValue().toLowerCase()) );
 	}
@@ -227,9 +225,9 @@ public class CppTask extends Task
 	 * information is included in the emitted files or not and how the task will treat
 	 * the given output name (will it append "d" for debug builds...).
 	 */
-	public void setBuildType( BuildTypeAntEnum type )
+	public void setMode( BuildModeAntEnum type )
 	{
-		configuration.setBuildType( BuildType.valueOf(type.getValue().toUpperCase()) );
+		configuration.setBuildMode( BuildMode.valueOf(type.getValue().toUpperCase()) );
 	}
 
 	/////////////////////////////
@@ -391,12 +389,12 @@ public class CppTask extends Task
 	/**
 	 * Ant enumeration to specify the valid values for the build type enumeration
 	 */
-	public static class BuildTypeAntEnum extends EnumeratedAttribute
+	public static class BuildModeAntEnum extends EnumeratedAttribute
 	{
 		public String[] getValues()
 		{
 			ArrayList<String> values = new ArrayList<String>();
-			for( BuildType type : BuildType.values() )
+			for( BuildMode type : BuildMode.values() )
 				values.add( type.toString().toLowerCase() );
 			
 			return values.toArray( new String[0] );

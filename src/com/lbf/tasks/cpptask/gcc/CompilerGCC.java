@@ -75,7 +75,7 @@ public class CompilerGCC implements Compiler
 		this.helper.prepareBuildSpace();
 		
 		// debug build - if configured
-		if( configuration.getBuildType().includesDebug() )
+		if( configuration.getBuildMode().includesDebug() )
 		{
 			// compile
 			compile( true );
@@ -86,7 +86,7 @@ public class CompilerGCC implements Compiler
 		}
 		
 		// release build - if configured
-		if( configuration.getBuildType().includesRelease() )
+		if( configuration.getBuildMode().includesRelease() )
 		{
 			// compile
 			compile( false );

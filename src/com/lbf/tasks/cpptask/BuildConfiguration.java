@@ -50,7 +50,7 @@ public class BuildConfiguration
 	private String outputName;
 	private OutputType outputType;
 	private Arch outputArch;
-	private BuildType buildType;
+	private BuildMode buildMode;
 	
 	// Compiler and linker options
 	private CompilerType compilerType;
@@ -83,7 +83,7 @@ public class BuildConfiguration
 		this.outputName        = null; // required
 		this.outputType        = OutputType.EXECUTABLE;
 		this.outputArch        = Arch.getOsArch();
-		this.buildType         = BuildType.RELEASE;
+		this.buildMode         = BuildMode.RELEASE;
 		
 		// Compiler and linker options
 		this.compilerArgs = "";
@@ -245,14 +245,14 @@ public class BuildConfiguration
 		return this.outputArch;
 	}
 	
-	public void setBuildType( BuildType type )
+	public void setBuildMode( BuildMode mode )
 	{
-		this.buildType = type;
+		this.buildMode = mode;
 	}
 	
-	public BuildType getBuildType()
+	public BuildMode getBuildMode()
 	{
-		return this.buildType;
+		return this.buildMode;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////
