@@ -23,6 +23,8 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
 
+import com.lbf.tasks.utils.Platform;
+
 public class Utilities
 {
 	//----------------------------------------------------------
@@ -31,11 +33,6 @@ public class Utilities
 	public static final String LINE_SEPARATOR = System.getProperty( "line.separator" );
 	public static final String FILE_SEPARATOR = System.getProperty( "file.separator" );
 	
-	public static final String PLATFORM = System.getProperty( "os.name" );
-	public static final boolean WIN32 = PLATFORM.toUpperCase().contains( "WINDOWS" );
-	public static final boolean LINUX = PLATFORM.toUpperCase().contains( "LINUX" );
-	public static final boolean MACOS = PLATFORM.toUpperCase().contains( "MAC" );
-
 	// the extension for object files, defaults to GCC style
 	// if your compiler is different, it should change this value when it starts
 	public static String O_EXTENSION = ".o";
@@ -113,7 +110,7 @@ public class Utilities
 				
 				// check for the presence of an ".o" file in the target directory
 				File[] ofiles =
-					configuration.getObjectDirectory().listFiles( new Filter(localName) );
+					configuration.getWorkingDirectory().listFiles( new Filter(localName) );
 				if( ofiles.length != 0 )
 				{
 					// an .o file exists, check modification times
@@ -191,7 +188,7 @@ public class Utilities
 				if( Utilities.isSourceFile(file) )
 				{
 					// get the .o version of it
-					ofiles.add( getOFile(configuration.getObjectDirectory(),file) );
+					ofiles.add( getOFile(configuration.getWorkingDirectory(),file) );
 				}
 			}
 		}
@@ -206,6 +203,9 @@ public class Utilities
 	 */
 	public static File getLibraryFile( BuildConfiguration configuration )
 	{
+		File outputDirectory = configuration.getOutputDirectory();
+		String outputName = configuration.getOutputName();
+		
 		///////////////////////////////////////////
 		///////////// Executable File /////////////
 		///////////////////////////////////////////
@@ -213,19 +213,19 @@ public class Utilities
 		if( configuration.getOutputType() == OutputType.EXECUTABLE )
 		{
 			// if we're not in windows, do nothing
-			if( !WIN32 )
-				return configuration.getOutputFile();
+			if( Platform.getOsPlatform().isWindows() == false )
+				return new File( outputDirectory, outputName );
 			
 			// does the output file have .exe on the end?
-			if( configuration.getOutputFile().getAbsolutePath().endsWith(".exe") == false )
+			if( configuration.getOutputName().endsWith(".exe") == false )
 			{
-				File newFile = new File( configuration.getOutputFile().getAbsolutePath() + ".exe" );
-				configuration.setOutputFile( newFile );
-				return configuration.getOutputFile();
+				File newFile = new File( outputDirectory, outputName+".exe" );
+				configuration.setOutputName( outputName+".exe" );
+				return newFile;
 			}
 			else
 			{
-				return configuration.getOutputFile();
+				return new File( outputDirectory, outputName );
 			}
 		}
 
@@ -233,41 +233,68 @@ public class Utilities
 		////////////// Library File //////////////
 		//////////////////////////////////////////
 		// it's a shared library, do the checks
-		String filename = configuration.getOutputFile().getName();
-		if( WIN32 )
+		if( Platform.getOsPlatform().isWindows() )
 		{
-			if( filename.endsWith(".dll") == false )
-				filename += ".dll";
+			if( outputName.endsWith(".dll") == false )
+				outputName += ".dll";
 		}
-		else if( MACOS )
+		else if( Platform.getOsPlatform().isMac() )
 		{
 			// put a "lib" on the front
-			if( filename.startsWith("lib") == false )
-				filename = "lib" + filename;
+			if( outputName.startsWith("lib") == false )
+				outputName = "lib" + outputName;
 			
 			// check for .dylib
-			if( filename.endsWith(".dylib") == false )
-				filename += ".dylib";
+			if( outputName.endsWith(".dylib") == false )
+				outputName += ".dylib";
 		}
 		else
 		{
 			// put a "lib" on the front
-			if( filename.startsWith("lib") == false )
-				filename = "lib" + filename;
+			if( outputName.startsWith("lib") == false )
+				outputName = "lib" + outputName;
 			
-			if( filename.endsWith(".so") == false ) 
-				filename += ".so";
+			if( outputName.endsWith(".so") == false ) 
+				outputName += ".so";
 		}
 
-		File newFile = new File( configuration.getOutputFile().getParent() +
-		                         FILE_SEPARATOR +
-		                         filename );
-		
+		File newFile = new File( outputDirectory, outputName );
 		// update the configuration
-		configuration.setOutputFile( newFile );
+		configuration.setOutputName( outputName );
 		return newFile;
 	}	
-	
+
+	/**
+	 * Takes the given file or directory and appends a "d" to the end to signify it is a
+	 * debug version. If the parameter represents a directory, a "d" is appened and new
+	 * file representing the path returned. If it is a file, a "d" is inserted infront of
+	 * the last "."
+	 * <p/>
+	 * Note that the path does not represent a file that actually exists, and no check is
+	 * made to see if this is the case or not.
+	 * @param file
+	 * @return
+	 */
+	public static File getDebugVersionOfFile( File file )
+	{
+		// get the current name of the file
+		String name = file.getName();
+
+		// find the place where the last "." is and slip "d" in before it
+		// if there is no final ".", just tack "d" onto the end
+		int lastPeriod = name.lastIndexOf( "." );
+		if( lastPeriod == -1 )
+			return new File( file.getParent(), name+"d" );
+
+		// example input string "mylibrary.so"
+		String newname = name.substring( 0, lastPeriod ) + // "mylibrary"
+		                 "d" +                             // the "d" for debug. yay!
+		                 name.substring( lastPeriod );     // ".so"
+
+		// return the new file
+		return new File( file.getParent(), newname );
+	}
+
 	/**
 	 * This method takes care of the dirty work of creating a StringTokenizer and breaking
 	 * apart the given String (using the provided delimiter). 
@@ -354,5 +381,24 @@ public class Utilities
 	public static boolean directoryExists( String location )
 	{
 		return (new File(location)).isDirectory();
+	}
+
+	/**
+	 * Returns true if the given array contains the given value. False otherwise. Each
+	 * element will be stripped of whitespace before being compared.
+	 * 
+	 * @param array The array to look into
+	 * @param value The value to look for
+	 */
+	public static boolean arrayContains( String[] array, String value )
+	{
+		for( String potential : array )
+		{
+			if( potential.trim().equals(value) )
+				return true;
+		}
+
+		// didn't find it
+		return false;
 	}
 }

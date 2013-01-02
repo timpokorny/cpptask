@@ -30,19 +30,21 @@ import org.apache.tools.ant.taskdefs.LogStreamHandler;
 import org.apache.tools.ant.types.Commandline;
 
 import com.lbf.tasks.cpptask.BuildConfiguration;
+import com.lbf.tasks.cpptask.BuildHelper;
 import com.lbf.tasks.cpptask.Compiler;
 import com.lbf.tasks.cpptask.Define;
 import com.lbf.tasks.cpptask.IncludePath;
 import com.lbf.tasks.cpptask.Library;
 import com.lbf.tasks.cpptask.OutputType;
-import com.lbf.tasks.cpptask.Utilities;
 import com.lbf.tasks.utils.Arch;
+import com.lbf.tasks.utils.StringUtilities;
 
 public class CompilerMSVC implements Compiler
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
 	//----------------------------------------------------------
+	public static final String FILE_SEPARATOR = System.getProperty( "file.separator" );
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
@@ -50,6 +52,7 @@ public class CompilerMSVC implements Compiler
 	private Version version;
 	private BuildConfiguration configuration;
 	private Task task;
+	private BuildHelper helper;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
@@ -60,29 +63,168 @@ public class CompilerMSVC implements Compiler
 		this.version = version;
 
 		// update the Utilities with object file extension
-		Utilities.O_EXTENSION = ".obj";
+		BuildHelper.O_EXTENSION = ".obj";
 	}
 
 	//----------------------------------------------------------
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
 
-	public void compile( BuildConfiguration configuration ) throws BuildException
+	public void runCompiler( BuildConfiguration configuration ) throws BuildException
 	{
 		// extract the necessary information
 		this.configuration = configuration;
 		this.task = configuration.getTask();
+		this.helper = new BuildHelper( configuration );
 
-		// create the command line that will be used for each compile
-		// this is just the part of it that doesn't include the file being compiled
-		Commandline command = generateCompileCommand();
-
-		// run the compile
-		compile( command );
+		// make sure we're ready to go
+		this.helper.prepareBuildSpace();
+		
+		// run the compiler
+		// NOTE: This will include "/Zi" which generates debug information - apparently
+		//       (and I hope I'm right) this won't screw anything else up, as debug info
+		//       goes into a separate PDB, but will come in handy later if we try to
+		//       link debug versions. Theory: Can't hurt, so just add it
+		compile();
 
 		// run the linker
 		if( configuration.getOutputFile() != null )
-			link();
+		{
+    		if( configuration.getBuildType().includesDebug() )
+    			link( true );
+    
+    		if( configuration.getBuildType().includesRelease() )
+    			link( false );
+		}
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////// Compiler Methods ////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////
+	/**
+	 * Execute the actual compilation step. Note that we will always include debugging information
+	 * for VS compiles as it adds pretty much nothing to the generated object files (putting debug
+	 * information in PDB files instead).
+	 */
+	private void compile()
+	{
+		task.log( "Starting Compile" );
+
+		// create the command line that will be used for each compile
+		// this is just the part of it that doesn't include the file being compiled
+		// NOTE: This will include "/Zi" which generates debug information - apparently
+		//       (and I hope I'm right) this won't screw anything else up, as debug info
+		//       goes into a separate PDB, but will come in handy later if we try to
+		//       link debug versions. Theory: Can't hurt, so just add it
+		Commandline command = generateCompileCommand();
+
+		// get all the files that we should compile
+		// this will run checks for things like incremental compiling
+		File buildDirectory = configuration.getTempDirectory();
+		File[] filesToCompile = helper.getFilesThatNeedCompiling( buildDirectory );
+		task.log( "" + filesToCompile.length + " files to be compiled." );
+
+		// make sure we have files to compile!
+		if( filesToCompile.length == 0 )
+		{
+			task.log( "Skipping Compile: Up to date" );
+			return;
+		}
+		
+		// create the response file which has all the compile information
+		File responseFile = createResponseFile( "compile-files",
+		                                        buildDirectory,
+		                                        StringUtilities.filesToStrings(filesToCompile) );
+		
+		// put the response file on the end of the command line
+		command.createArgument().setValue( "@"+responseFile.getAbsolutePath() );
+		
+		// prepend the pre-command (if there is one) and run this thing
+		Execute runner = new Execute( new LogStreamHandler(configuration.getTask(),
+		                                                   Project.MSG_INFO,
+		                                                   Project.MSG_WARN) );
+		
+		runner.setCommandline( prependEnvironment(command.getCommandline()) );
+		runner.setWorkingDirectory( buildDirectory );
+		try
+		{
+			// log what we're doing
+			task.log( "Starting Compile" );
+			task.log( "Running compile command: ", Project.MSG_VERBOSE );
+			for( String argument : runner.getCommandline() )
+				task.log( argument, Project.MSG_VERBOSE );
+
+			int exitValue = runner.execute();
+			if( exitValue != 0 )
+			{
+				throw new BuildException( "Compile Failed, (exit value: " + exitValue + ")" );
+			}
+		}
+		catch( IOException e )
+		{
+			// most likely, the compiler isn't on the path and can't be found. print out
+			// kill the build with a nicer error
+			String msg = "There was a problem running the compiler, this usually occurs when " +
+			             "windows can't find the compiler (cl.exe), make sure it is on your path." +
+			             " full error: " + e.getMessage();
+			throw new BuildException( msg, e );
+		}
+		
+		// NOTE: I've been making some changes and now RC file support isn't as
+		//       simple as it once was. This will need to be added back as some
+		//       point in the future, perhaps by splitting the compile file array
+		//       into two separate ones (one for rc files, one for the rest):
+		//if(sourceFile.getName().endsWith(".rc"))
+		//{
+		//	// Is this a win32 resource file?
+		//	theCommand = new Commandline();
+		//	theCommand.setExecutable( "rc" );
+		//	theCommand.createArgument().setFile( sourceFile );
+		//}
+
+		task.log( "Compile complete" );
+	}
+
+	/**
+	 * Generates the command that will be used for the compile of each relevant file.
+	 * This is just the extra stuff that doesn't include the name of the file being compiled.
+	 */
+	private Commandline generateCompileCommand()
+	{
+		// create the working directories if they don't already exist
+		configuration.getTempDirectory(true).mkdirs();
+
+		// create the command line
+		Commandline commandline = new Commandline();
+		commandline.setExecutable( "cl" );
+		commandline.createArgument().setValue( "/c" );
+		commandline.createArgument().setValue( "/nologo" );
+		commandline.createArgument().setValue( "/Zi" );
+
+		/////// additional args ////////
+		// do this up front
+		String[] commands = Commandline.translateCommandline( configuration.getCompilerArgs() );
+		commandline.addArguments( commands );
+		
+		////// includes //////
+		for( IncludePath path : configuration.getIncludePaths() )
+		{
+			// make sure there is a path
+			if( path.getPath() != null )
+			{
+				// add each path element to the line
+				for( String temp : path.getPath().list() )
+					commandline.createArgument().setLine( "/I" + Commandline.quoteArgument(temp) );
+			}
+		}
+		
+		////// defines ///////
+		for( Define define : configuration.getDefines() )
+		{
+			commandline.createArgument().setLine( "/D" + define.getName() );
+		}
+		
+		return commandline;
 	}
 
 	/**
@@ -94,7 +236,7 @@ public class CompilerMSVC implements Compiler
 	 * @param baseCommand
 	 * @return
 	 */
-	private String[] prepareFullCommandLine( String[] baseCommand )
+	private String[] prependEnvironment( String[] baseCommand )
 	{
 		// 1. Get a reference to the Visual Studio environment setup file and argument
 		//    The argument we provide depends on the operating system we are on and the
@@ -203,122 +345,6 @@ public class CompilerMSVC implements Compiler
 		
 		return responseFile;
 	}
-	
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////// Compiler Methods ////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/**
-	 * Generates the command that will be used for the compile of each relevant file.
-	 * This is just the extra stuff that doesn't include the name of the file being compiled.
-	 */
-	private Commandline generateCompileCommand()
-	{
-		// create the command line
-		Commandline commandline = new Commandline();
-		commandline.setExecutable( "cl" );
-		commandline.createArgument().setValue( "/c" );
-		commandline.createArgument().setValue( "/nologo" );
-		commandline.createArgument().setValue( "/DNDEBUG" );
-
-		/////// additional args ////////
-		// do this up front
-		String[] commands = Commandline.translateCommandline( configuration.getCompilerArgs() );
-		commandline.addArguments( commands );
-		
-		////// includes //////
-		for( IncludePath path : configuration.getIncludePaths() )
-		{
-			// make sure there is a path
-			if( path.getPath() != null )
-			{
-				// add each path element to the line
-				for( String temp : path.getPath().list() )
-					commandline.createArgument().setLine( "/I" + Commandline.quoteArgument(temp) );
-			}
-		}
-		
-		////// defines ///////
-		for( Define define : configuration.getDefines() )
-		{
-			commandline.createArgument().setLine( "/D" + define.getName() );
-		}
-		
-		return commandline;
-	}
-
-	/**
-	 * Execute the actual compilation for each of the given files, using the command line
-	 * that is provided. The command line information is NOT the full command line, but rather,
-	 * just the stuff that will be used when compiling each file.
-	 */
-	private void compile( Commandline command )
-	{
-		// get all the files that we should compile
-		// this will run checks for things like incremental compiling
-		File[] filesToCompile = Utilities.getFilesToCompile( configuration, task );
-		task.log( "" + filesToCompile.length + " files to be compiled." );
-
-		// make sure we have files to compile!
-		if( filesToCompile.length == 0 )
-		{
-			task.log( "Skipping Compile: Up to date" );
-			return;
-		}
-		
-		// create the response file which has all the compile information
-		File responseFile = createResponseFile( "compile-files",
-		                                        configuration.getObjectDirectory(),
-		                                        Utilities.filesToStrings(filesToCompile) );
-		
-		// put the response file on the end of the command line
-		command.createArgument().setValue( "@"+responseFile.getAbsolutePath() );
-		
-		// prepend the pre-command (if there is one) and run this thing
-		Execute runner = new Execute( new LogStreamHandler(configuration.getTask(),
-		                                                   Project.MSG_INFO,
-		                                                   Project.MSG_WARN) );
-		
-		runner.setCommandline( prepareFullCommandLine(command.getCommandline()) );
-		runner.setWorkingDirectory( configuration.getObjectDirectory() );
-		try
-		{
-			// log what we're doing
-			task.log( "Starting Compile" );
-			task.log( "Running compile command: ", Project.MSG_VERBOSE );
-			for( String argument : runner.getCommandline() )
-				task.log( argument, Project.MSG_VERBOSE );
-
-			int exitValue = runner.execute();
-			if( exitValue != 0 )
-			{
-				throw new BuildException( "Compile Failed, (exit value: " + exitValue + ")" );
-			}
-		}
-		catch( IOException e )
-		{
-			// most likely, the compiler isn't on the path and can't be found. print out
-			// kill the build with a nicer error
-			String msg = "There was a problem running the compiler, this usually occurs when " +
-			             "windows can't find the compiler (cl.exe), make sure it is on your path." +
-			             " full error: " + e.getMessage();
-			throw new BuildException( msg, e );
-		}
-		
-		// NOTE: I've been making some changes and now RC file support isn't as
-		//       simple as it once was. This will need to be added back as some
-		//       point in the future, perhaps by splitting the compile file array
-		//       into two separate ones (one for rc files, one for the rest):
-		//if(sourceFile.getName().endsWith(".rc"))
-		//{
-		//	// Is this a win32 resource file?
-		//	theCommand = new Commandline();
-		//	theCommand.setExecutable( "rc" );
-		//	theCommand.createArgument().setFile( sourceFile );
-		//}
-
-		task.log( "Compile complete" );
-	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////// Linker Methods /////////////////////////////////////
@@ -327,17 +353,21 @@ public class CompilerMSVC implements Compiler
 	 * This method is the main manager of the linking process. It should only be run if an
 	 * "outfile" has been provided in the configuration. It will attempt to link all the
 	 * files in the objdir into a simple executable/library.
+	 * 
+	 * @param isDebugRun If true, this call will always include "/DEBUG" in the linker arguments.
+	 *                   This is used when buildDebugLibs is included in the main Ant task call
+	 *                   instructing us to build both release and debug libraries
 	 */
-	private void link()
+	private void link( boolean isDebugRun )
 	{
-		// generate the command line
-		Commandline commandline = generateLinkCommand();
-		String[] filesAndLibrariesToLink = generateLinkFiles();
-
-		// create a response file to hold all the .obj file names
+		// generate the base command line
+		// object and library files done in a separate response file
+		Commandline commandline = generateLinkCommand( isDebugRun );
+		
+		// build the response file with the object and library files to link with
 		File responseFile = createResponseFile( "linker-files",
-		                                        configuration.getObjectDirectory(),
-		                                        filesAndLibrariesToLink );
+		                                        configuration.getTempDirectory(),
+		                                        getFilesAndLibrariesToLinkWith() );
 		
 		// put the response file on the end of the command
 		commandline.createArgument().setValue( "@"+responseFile.getAbsolutePath() );
@@ -347,14 +377,15 @@ public class CompilerMSVC implements Compiler
 		                                                    Project.MSG_INFO,
 		                                                    Project.MSG_WARN) );
 		
-		runner.setCommandline( prepareFullCommandLine(commandline.getCommandline()) );
-		runner.setWorkingDirectory( configuration.getOutputFile().getParentFile() );
+		runner.setCommandline( prependEnvironment(commandline.getCommandline()) );
+		runner.setWorkingDirectory( configuration.getTempDirectory().getParentFile() );
 
 		// run the command
 		try
 		{
 			// log what we're doing
-			task.log( "Starting Link" );
+			String extraInfo = isDebugRun ? "(debug)" : "(release)";
+			task.log( "Starting Link "+extraInfo );
 			task.log( "Running link command: ", Project.MSG_DEBUG );
 			for( String argument : commandline.getCommandline() )
 				task.log( argument, Project.MSG_DEBUG );
@@ -375,13 +406,16 @@ public class CompilerMSVC implements Compiler
 			throw new BuildException( msg, e );
 		}
 		
-		task.log( "Link complete: " + configuration.getOutputFile() );
+		task.log( "Link complete. Library in directory: " + configuration.getOutputDirectory() );
+		task.log( "" ); // a little bit of space
 	}
 
 	/**
-	 * Generates the linker execution command line including library locations, .o files etc...
+	 * Generates the linker command line. The specification of object files and libraries that
+	 * are to be linked with is handled through a special response file. That file is built
+	 * outside of this method. This method simply builds base the link.exe command line.
 	 */
-	private Commandline generateLinkCommand()
+	private Commandline generateLinkCommand( boolean isDebugRun )
 	{
 		// create the command line in which to store the information
 		Commandline commandline = new Commandline();
@@ -391,18 +425,22 @@ public class CompilerMSVC implements Compiler
 		commandline.createArgument().setValue( "/NOLOGO" );
 		commandline.createArgument().setValue( "/SUBSYSTEM:CONSOLE" );
 		//commandline.createArgument().setValue( "/INCREMENTAL:NO" );
-		commandline.createArgument().setValue( "/OUT:" + Utilities.getLibraryFile(configuration) );
+		commandline.createArgument().setValue( "/OUT:" + helper.getPlatformSpecificOutputFile(isDebugRun) );
+		if( isDebugRun )
+			commandline.createArgument().setValue( "/DEBUG" );
 		
 		/////// output file type ///////
 		if( configuration.getOutputType() == OutputType.SHARED )
-		{
 			commandline.createArgument().setValue( "/DLL" );
-		}
 		
 		return commandline;
 	}
-	
-	private String[] generateLinkFiles()
+
+	/**
+	 * Get an array of all the paths for files and libraries that we need to link with. These
+	 * paths will be added to the response file that will be used as input for the link command.
+	 */
+	private String[] getFilesAndLibrariesToLinkWith()
 	{
 		/////// libraries to link with ///////
 		// for each specified library, search in the library paths for a file of the name
@@ -436,7 +474,7 @@ public class CompilerMSVC implements Compiler
 			for( String path : linkPaths )
 			{
 				// without "lib" on the front
-				File possible = new File( path + Utilities.FILE_SEPARATOR + libToFind );
+				File possible = new File( path + FILE_SEPARATOR + libToFind );
 				task.log( "[check] "+possible, Project.MSG_DEBUG );
 				if( possible.exists() )
 				{
@@ -449,7 +487,7 @@ public class CompilerMSVC implements Compiler
 				}
 				
 				// regular doesn't exist, try with "lib" on front
-				possible = new File( path + Utilities.FILE_SEPARATOR + "lib" + libToFind );
+				possible = new File( path + FILE_SEPARATOR + "lib" + libToFind );
 				task.log( "[check] "+possible, Project.MSG_DEBUG );
 				if( possible.exists() )
 				{
@@ -467,7 +505,7 @@ public class CompilerMSVC implements Compiler
 				throw new BuildException( "Couldn't find library: " + libToFind + " for linking" );
 		}
 
-		/////// additional args ///////
+		/////// additional linker args ///////
 		String[] commands = Commandline.translateCommandline( configuration.getLinkerArgs() );
 		//commandline.addArguments( commands );
 		for( String temp : commands )
@@ -476,14 +514,12 @@ public class CompilerMSVC implements Compiler
 		////////////////////////////////////
 		/////// object files to link ///////
 		////////////////////////////////////
-		for( File ofile : Utilities.getOFilesForLinking(configuration) )
+		for( File ofile : helper.getFilesThatNeedLinking(configuration.getTempDirectory()) )
 		{
 			returnArray.add( ofile.getAbsolutePath() );
-			//commandline.createArgument().setFile( ofile );
 		}
 		
 		// return the finished product!
-		//return commandline;
 		return returnArray.toArray( new String[0] );
 	}
 
