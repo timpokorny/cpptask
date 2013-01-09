@@ -22,5 +22,5 @@ public interface Compiler
 	 * Run the compilation process using the data contained in the given task.
 	 * Should throw a BuildException if there is a problem.
 	 */
-	public void compile( BuildConfiguration configuration ) throws BuildException;
+	public void runCompiler( BuildConfiguration configuration ) throws BuildException;
 }
