@@ -50,7 +50,6 @@ public class BuildConfiguration
 	private String outputName;
 	private OutputType outputType;
 	private Arch outputArch;
-	private BuildMode buildMode;
 	
 	// Compiler and linker options
 	private CompilerType compilerType;
@@ -83,7 +82,6 @@ public class BuildConfiguration
 		this.outputName        = null; // required
 		this.outputType        = OutputType.EXECUTABLE;
 		this.outputArch        = Arch.getOsArch();
-		this.buildMode         = BuildMode.RELEASE;
 		
 		// Compiler and linker options
 		this.compilerArgs = "";
@@ -152,39 +150,26 @@ public class BuildConfiguration
 	}
 	
 	/**
-	 * Gets the directory that we should put temporary build files into. Depending on whether
-	 * the given debug parameter is true or false, this will be: [workingDirectory]/temp/debug
-	 * or [workingDirectory]/temp/release.
+	 * Generates a new temp directory under a path that is specific for the output
+	 * architecture of the build. During compilation, object and other build files
+	 * should be placed in this directory. Separate files may be generated for the
+	 * particular output arch, so using this method ensures that a separate directory
+	 * is provided for each target build architecure. If this folder doesn't exist
+	 * it will be created by this call. The architecture used is that which is set
+	 * as the output architecture for the build.
 	 * <p/>
-	 * Note that this method will create the directory if it doesn't already exist. 
+	 * The pathing conforms to the following general scheme:
+	 * <ul>
+	 *   <li>workdir: ./working</li>
+	 *   <li>objdir : ./working/obj/amd64 (for 64-bit)</li>
+	 * </ul>
+	 * For example, if the working directory is "./working" that would make the temp
+	 * directory "./working/temp". From here, if the output arch was "amd64", the returned
+	 * file would point to the directory "./working/temp/amd64"
 	 */
-	public File getTempDirectory( boolean debug )
+	public File getObjectDirectory()
 	{
-		if( debug )
-		{
-			File directory = new File( this.workingDirectory, "temp/debug/" );
-			directory.mkdirs();
-			return directory;
-		}
-		else
-		{
-			File directory = new File( this.workingDirectory, "temp/release/" );
-			directory.mkdirs();
-			return directory;
-		}
-	}
-
-	/**
-	 * Gets the raw temp directory (workingDirectory/temp). Typically you'll want references to
-	 * either the debug or release directories underneath here and should use the provided
-	 * {@link #getTempDirectory(boolean)} to get this. If you just want the temp directory itself,
-	 * then have at it.
-	 * <p/>
-	 * Note that this method will create the directory if it doesn't already exist. 
-	 */
-	public File getTempDirectory()
-	{
-		File directory = new File( this.workingDirectory, "temp/" );
+		File directory = new File( this.workingDirectory, "obj/"+getOutputArch().toString() );
 		directory.mkdirs();
 		return directory;
 	}
@@ -194,6 +179,9 @@ public class BuildConfiguration
 		this.outputDirectory = file;
 	}
 
+	/**
+	 * The directory where the compiled output should be put.
+	 */
 	public File getOutputDirectory()
 	{
 		// if we haven't got one, lazy load it as [workingDirectory]/complete
@@ -245,16 +233,6 @@ public class BuildConfiguration
 		return this.outputArch;
 	}
 	
-	public void setBuildMode( BuildMode mode )
-	{
-		this.buildMode = mode;
-	}
-	
-	public BuildMode getBuildMode()
-	{
-		return this.buildMode;
-	}
-
 	///////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////// Compiler Properties /////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////

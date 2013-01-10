@@ -1,5 +1,5 @@
 /*
- *   Copyright 2007 littlebluefroglabs.com
+ *   Copyright 2013 littlebluefroglabs.com
  *
  *   This file is part of cpptask.
  *
@@ -80,31 +80,16 @@ public class CompilerMSVC implements Compiler
 		// make sure we're ready to go
 		this.helper.prepareBuildSpace();
 		
-		// run the compiler
-		// NOTE: This will include "/Zi" which generates debug information - apparently
-		//       (and I hope I'm right) this won't screw anything else up, as debug info
-		//       goes into a separate PDB, but will come in handy later if we try to
-		//       link debug versions. Theory: Can't hurt, so just add it
+		// do this thing
 		compile();
-
-		// run the linker
-		if( configuration.getOutputFile() != null )
-		{
-    		if( configuration.getBuildMode().includesDebug() )
-    			link( true );
-    
-    		if( configuration.getBuildMode().includesRelease() )
-    			link( false );
-		}
+		link();
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////// Compiler Methods ////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/**
-	 * Execute the actual compilation step. Note that we will always include debugging information
-	 * for VS compiles as it adds pretty much nothing to the generated object files (putting debug
-	 * information in PDB files instead).
+	 * Execute the actual compilation step.
 	 */
 	private void compile()
 	{
@@ -112,16 +97,12 @@ public class CompilerMSVC implements Compiler
 
 		// create the command line that will be used for each compile
 		// this is just the part of it that doesn't include the file being compiled
-		// NOTE: This will include "/Zi" which generates debug information - apparently
-		//       (and I hope I'm right) this won't screw anything else up, as debug info
-		//       goes into a separate PDB, but will come in handy later if we try to
-		//       link debug versions. Theory: Can't hurt, so just add it
 		Commandline command = generateCompileCommand();
 
 		// get all the files that we should compile
 		// this will run checks for things like incremental compiling
-		File buildDirectory = configuration.getTempDirectory();
-		File[] filesToCompile = helper.getFilesThatNeedCompiling( buildDirectory );
+		File objectDirectory = configuration.getObjectDirectory();
+		File[] filesToCompile = helper.getFilesThatNeedCompiling( objectDirectory );
 		task.log( "" + filesToCompile.length + " files to be compiled." );
 
 		// make sure we have files to compile!
@@ -133,7 +114,7 @@ public class CompilerMSVC implements Compiler
 		
 		// create the response file which has all the compile information
 		File responseFile = createResponseFile( "compile-files",
-		                                        buildDirectory,
+		                                        objectDirectory,
 		                                        StringUtilities.filesToStrings(filesToCompile) );
 		
 		// put the response file on the end of the command line
@@ -145,7 +126,7 @@ public class CompilerMSVC implements Compiler
 		                                                   Project.MSG_WARN) );
 		
 		runner.setCommandline( prependEnvironment(command.getCommandline()) );
-		runner.setWorkingDirectory( buildDirectory );
+		runner.setWorkingDirectory( objectDirectory );
 		try
 		{
 			// log what we're doing
@@ -192,14 +173,13 @@ public class CompilerMSVC implements Compiler
 	private Commandline generateCompileCommand()
 	{
 		// create the working directories if they don't already exist
-		configuration.getTempDirectory(true).mkdirs();
+		configuration.getObjectDirectory().mkdirs();
 
 		// create the command line
 		Commandline commandline = new Commandline();
 		commandline.setExecutable( "cl" );
 		commandline.createArgument().setValue( "/c" );
 		commandline.createArgument().setValue( "/nologo" );
-		commandline.createArgument().setValue( "/Zi" );
 
 		/////// additional args ////////
 		// do this up front
@@ -353,20 +333,16 @@ public class CompilerMSVC implements Compiler
 	 * This method is the main manager of the linking process. It should only be run if an
 	 * "outfile" has been provided in the configuration. It will attempt to link all the
 	 * files in the objdir into a simple executable/library.
-	 * 
-	 * @param isDebugRun If true, this call will always include "/DEBUG" in the linker arguments.
-	 *                   This is used when buildDebugLibs is included in the main Ant task call
-	 *                   instructing us to build both release and debug libraries
 	 */
-	private void link( boolean isDebugRun )
+	private void link()
 	{
 		// generate the base command line
 		// object and library files done in a separate response file
-		Commandline commandline = generateLinkCommand( isDebugRun );
+		Commandline commandline = generateLinkCommand();
 		
 		// build the response file with the object and library files to link with
 		File responseFile = createResponseFile( "linker-files",
-		                                        configuration.getTempDirectory(),
+		                                        configuration.getObjectDirectory(),
 		                                        getFilesAndLibrariesToLinkWith() );
 		
 		// put the response file on the end of the command
@@ -378,14 +354,13 @@ public class CompilerMSVC implements Compiler
 		                                                    Project.MSG_WARN) );
 		
 		runner.setCommandline( prependEnvironment(commandline.getCommandline()) );
-		runner.setWorkingDirectory( configuration.getTempDirectory().getParentFile() );
+		runner.setWorkingDirectory( configuration.getObjectDirectory().getParentFile() );
 
 		// run the command
 		try
 		{
 			// log what we're doing
-			String extraInfo = isDebugRun ? "(debug)" : "(release)";
-			task.log( "Starting Link "+extraInfo );
+			task.log( "Starting Link" );
 			task.log( "Running link command: ", Project.MSG_DEBUG );
 			for( String argument : commandline.getCommandline() )
 				task.log( argument, Project.MSG_DEBUG );
@@ -415,7 +390,7 @@ public class CompilerMSVC implements Compiler
 	 * are to be linked with is handled through a special response file. That file is built
 	 * outside of this method. This method simply builds base the link.exe command line.
 	 */
-	private Commandline generateLinkCommand( boolean isDebugRun )
+	private Commandline generateLinkCommand()
 	{
 		// create the command line in which to store the information
 		Commandline commandline = new Commandline();
@@ -425,9 +400,7 @@ public class CompilerMSVC implements Compiler
 		commandline.createArgument().setValue( "/NOLOGO" );
 		commandline.createArgument().setValue( "/SUBSYSTEM:CONSOLE" );
 		//commandline.createArgument().setValue( "/INCREMENTAL:NO" );
-		commandline.createArgument().setValue( "/OUT:" + helper.getPlatformSpecificOutputFile(isDebugRun) );
-		if( isDebugRun )
-			commandline.createArgument().setValue( "/DEBUG" );
+		commandline.createArgument().setValue( "/OUT:" + helper.getPlatformSpecificOutputFile() );
 		
 		/////// output file type ///////
 		if( configuration.getOutputType() == OutputType.SHARED )
@@ -514,7 +487,7 @@ public class CompilerMSVC implements Compiler
 		////////////////////////////////////
 		/////// object files to link ///////
 		////////////////////////////////////
-		for( File ofile : helper.getFilesThatNeedLinking(configuration.getTempDirectory()) )
+		for( File ofile : helper.getFilesThatNeedLinking(configuration.getObjectDirectory()) )
 		{
 			returnArray.add( ofile.getAbsolutePath() );
 		}

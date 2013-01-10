@@ -67,9 +67,9 @@ public class BuildHelper
 	 * build directorys (if they do not exist). These can be configured by the user, but they
 	 * default to:
 	 * <ul>
-	 *   <li>${workingDirectory}           -- location for all working files</li>
-	 *   <li>${workingDirectory}/temp      -- location for temp files required during build</li>
-	 *   <li>${workingDirectory}/complete  -- completed compilation units (libs/exe's)</li>
+	 *   <li>${workingDirectory}                 -- location for all working files</li>
+	 *   <li>${workingDirectory}/temp/[platform] -- temp files generated during the build</li> 
+	 *   <li>${workingDirectory}/complete        -- completed compilation units (libs/exe's)</li>
 	 * </ul>
 	 */
 	public void prepareBuildSpace()
@@ -212,12 +212,8 @@ public class BuildHelper
 	 * This method will take the output file and convert the name as necessary. The conversion
 	 * that takes place depends on both the output file (executable/library) and the platform
 	 * on which Ant is running. See the code for more information.
-	 * 
-	 * @param debug True if this is a debug build. This will cause "d" to be appended to the
-	 *              end of the returned file name (before any extension). False if this is a
-	 *              release build, in which case the returned file will have the configured name.
 	 */
-	public File getPlatformSpecificOutputFile( boolean debug )
+	public File getPlatformSpecificOutputFile()
 	{
 		// This method will generate a file from the configured output directory and output
 		// name. The initial assessment below will just update the local outputName variable
@@ -270,24 +266,6 @@ public class BuildHelper
 				if( outputName.endsWith(".so") == false ) 
 					outputName += ".so";
 			}
-		}
-
-		// if this is a debug run, update the name of the output file to append a "d"
-		// to it (before any extension)
-		if( debug )
-		{
-    		// slap "d" onto the end of the file
-    		int lastPeriod = outputName.lastIndexOf( "." );
-    		if( lastPeriod == -1 )
-    		{
-    			outputName += "d";
-    		}
-    		else
-    		{
-    			outputName = outputName.substring(0,lastPeriod) +
-    			             "d" +
-    			             outputName.substring(lastPeriod);
-    		}
 		}
 
 		// create a new File object from the information and return it

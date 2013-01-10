@@ -28,18 +28,17 @@ import com.lbf.tasks.utils.Arch;
 /**
  * Example of Task usage:
  * 
- *  <cpptask outfile=""       // (required) output file name (just the name)
- *           workdir=""       // (required) where the task will compile the source to
- *           outdir=""        // location for completed library/exe (defaults to workdir/complete)
- *           type=""          // type of artefact to build (shared, static, executable)
- *           arch=""          // output architecture (defaults to same as the OS)
- *           mode=""          // build mode (debug, release, both) - debug libs renamed (e.g. outfileD.dll)
- *           compiler=""      // name of the compiler to use (gcc, g++, vc8, vc9, vc10)
- *           compilerArgs=""  // additional arguments that should be used for each compile
- *           linkerArgs=""    // additional arguments that should be used for linking
- *           preCommand=""    // command to prepend to all compile and link commands
- *           incremental=""   // should things be compiled incrementally
- *           failOnError=""   // fail the build on an error (defaults to true)
+ *  <cpptask outfile=""         // (required) NAME of the file to produce. Extension auto appended. 
+ *           workdir=""         // (required) Directory for working files.
+ *           objdir=""          // Directory for compiled artefacts. Defaults to workdir/complete. 
+ *           type=""            // Output type: shared, static or executable
+ *           arch=""            // Output architecture: x86 or amd64 (defaults to same as OS)
+ *           compiler=""        // Compiler to use: gcc, g++, vc8, vc9, vc10, ... )
+ *           compilerArgs=""    // Additional compiler arguments
+ *           linkerArgs=""      // Additional linker arguments
+ *           preCommand=""      // Command to run before the compile and link commands
+ *           incremental=""     // Use incremental compilation and linking? (defaults to true)
+ *           failOnError=""     // Fail the build on an error (defaults to true)
  *  >
  *      <fileset...>                // fileset that contains source code
  *      <includepath path=""/>      // paths for include files (can have many)
@@ -114,7 +113,6 @@ public class CppTask extends Task
 		log( "preCommand    : " + configuration.getPreCommand(), Project.MSG_VERBOSE );
 		log( "compiler args : " + configuration.getCompilerArgs(), Project.MSG_VERBOSE );
 		log( "linker args   : " + configuration.getLinkerArgs(), Project.MSG_VERBOSE );
-		log( "mode          : " + configuration.getBuildMode(), Project.MSG_DEBUG );
 		log( "outfile       : " + configuration.getOutputName(), Project.MSG_VERBOSE );
 		log( "workdir       : " + configuration.getWorkingDirectory(), Project.MSG_DEBUG );
 		log( "outdir        : " + configuration.getOutputDirectory(), Project.MSG_DEBUG );
@@ -218,16 +216,6 @@ public class CppTask extends Task
 	public void setArch( OutputArchAntEnum arch )
 	{
 		configuration.setOutputArch( Arch.valueOf(arch.getValue().toLowerCase()) );
-	}
-
-	/**
-	 * Sets the type of build this is (release|debug|both). Will change whether debug
-	 * information is included in the emitted files or not and how the task will treat
-	 * the given output name (will it append "d" for debug builds...).
-	 */
-	public void setMode( BuildModeAntEnum type )
-	{
-		configuration.setBuildMode( BuildMode.valueOf(type.getValue().toUpperCase()) );
 	}
 
 	/////////////////////////////
@@ -381,21 +369,6 @@ public class CppTask extends Task
 			ArrayList<String> values = new ArrayList<String>();
 			for( Arch arch : Arch.values() )
 				values.add( arch.toString().toLowerCase() );
-			
-			return values.toArray( new String[0] );
-		}
-	}
-
-	/**
-	 * Ant enumeration to specify the valid values for the build type enumeration
-	 */
-	public static class BuildModeAntEnum extends EnumeratedAttribute
-	{
-		public String[] getValues()
-		{
-			ArrayList<String> values = new ArrayList<String>();
-			for( BuildMode type : BuildMode.values() )
-				values.add( type.toString().toLowerCase() );
 			
 			return values.toArray( new String[0] );
 		}

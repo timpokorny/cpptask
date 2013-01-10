@@ -1,5 +1,5 @@
 /*
- *   Copyright 2007 littlebluefroglabs.com
+ *   Copyright 2013 littlebluefroglabs.com
  *
  *   This file is part of cpptask.
  *
@@ -32,7 +32,6 @@ import com.lbf.tasks.cpptask.IncludePath;
 import com.lbf.tasks.cpptask.Library;
 import com.lbf.tasks.cpptask.OutputType;
 import com.lbf.tasks.utils.Platform;
-import com.lbf.tasks.utils.StringUtilities;
 
 /**
  * This class is responsible for the handling of the compilation process when using GCC.
@@ -74,27 +73,9 @@ public class CompilerGCC implements Compiler
 		// make sure we're ready to go
 		this.helper.prepareBuildSpace();
 		
-		// debug build - if configured
-		if( configuration.getBuildMode().includesDebug() )
-		{
-			// compile
-			compile( true );
-			
-			// link
-			if( configuration.getOutputName() != null )
-				link( true );
-		}
-		
-		// release build - if configured
-		if( configuration.getBuildMode().includesRelease() )
-		{
-			// compile
-			compile( false );
-			
-			// link
-			if( configuration.getOutputName() != null )
-				link( false );
-		}
+		// do that wild thing! and compile, probably link as well
+		compile();
+		link();
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -102,24 +83,19 @@ public class CompilerGCC implements Compiler
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/**
 	 * Execute the actual compilation for each of the given files.
-	 * <p/>
-	 * If the given argument is true, the compile will automatically add the command to emit
-	 * debug versions. If the debug command is already in the arguments, this setting will be
-	 * irrelevant.
 	 */
-	private void compile( boolean debug )
+	private void compile()
 	{
 		// let everyone know what we're doing
-		String extraInfo = debug ? "(debug)" : "(release)";
-		task.log( "Starting Compile "+extraInfo );
+		task.log( "Starting Compile " );
 
 		// generate the command line
-		Commandline command = generateCompileCommand( debug );
+		Commandline command = generateCompileCommand();
 
 		// get all the files that we should compile
 		// this will run checks for things like incremental compiling
-		File buildDirectory = configuration.getTempDirectory( debug );
-		File[] filesToCompile = helper.getFilesThatNeedCompiling( buildDirectory );
+		File objectDirectory = configuration.getObjectDirectory();
+		File[] filesToCompile = helper.getFilesThatNeedCompiling( objectDirectory );
 		task.log( "" + filesToCompile.length + " files to be compiled." );
 
 		// do the compilation
@@ -127,7 +103,7 @@ public class CompilerGCC implements Compiler
 		{
 			Commandline theCommand;
 			// get the name of the output file
-			File ofile = helper.getOFile( configuration.getTempDirectory(debug), sourceFile );
+			File ofile = helper.getOFile( objectDirectory, sourceFile );
 			if( sourceFile.getName().endsWith(".rc") )
 			{	
 				// Is this a win32 resource file?
@@ -186,10 +162,8 @@ public class CompilerGCC implements Compiler
 	/**
 	 * Generates the command that will be used for the compile of each relevant file.
 	 * This is just the extra stuff that doesn't include the name of the file being compiled.
-	 * 
-	 * @param debug Include the debug symbol if it is not already present.
 	 */
-	private Commandline generateCompileCommand( boolean debug )
+	private Commandline generateCompileCommand()
 	{
 		// create the command line
 		Commandline commandline = new Commandline();
@@ -218,13 +192,6 @@ public class CompilerGCC implements Compiler
 		String[] commands = Commandline.translateCommandline( configuration.getCompilerArgs() );
 		commandline.addArguments( commands );
 		
-		// add in the debug command if it is not already present
-		if( debug )
-		{
-			if( StringUtilities.arrayContains(commands, "-g") == false )
-				commandline.createArgument().setValue( "-g" );
-		}
-
 		return commandline;
 	}
 
@@ -235,15 +202,11 @@ public class CompilerGCC implements Compiler
 	 * This method is the main manager of the linking process. It should only be run if an
 	 * "outfile" has been provided in the configuration. It will attempt to link all the
 	 * files in the objdir into a simple executable/library.
-	 * <p/>
-	 * If the given argument is true, the compile will automatically add the command to emit
-	 * debug versions. If the debug command is already in the arguments, this setting will be
-	 * irrelevant.
 	 */
-	private void link( boolean debug )
+	private void link()
 	{
 		// generate the command line
-		Commandline commandline = generateLinkCommand( debug );
+		Commandline commandline = generateLinkCommand();
 
 		// create the execution object
 		Execute runner = new Execute( new LogStreamHandler( configuration.getTask(),
@@ -255,8 +218,7 @@ public class CompilerGCC implements Compiler
 		// run the command
 		try
 		{
-			String extraInfo = debug ? "(debug)" : "(release)";
-			task.log( "Starting Link "+extraInfo );
+			task.log( "Starting Link " );
 			task.log( commandline.toString(), Project.MSG_DEBUG );
 
 			int exitValue = runner.execute();
@@ -277,10 +239,8 @@ public class CompilerGCC implements Compiler
 
 	/**
 	 * Generates the linker execution command line including library locations, .o files etc...
-	 * 
-	 * @param debug Include the debug symbol if it is not already present.
 	 */
-	private Commandline generateLinkCommand( boolean debug )
+	private Commandline generateLinkCommand()
 	{
 		// create the command line in which to store the information
 		Commandline commandline = new Commandline();
@@ -288,13 +248,13 @@ public class CompilerGCC implements Compiler
 
 		/////// output file name ///////
 		commandline.createArgument().setValue( "-o" );
-		commandline.createArgument().setFile( helper.getPlatformSpecificOutputFile(debug) );
+		commandline.createArgument().setFile( helper.getPlatformSpecificOutputFile() );
 		
 		////////////////////////////////////
 		/////// object files to link ///////
 		////////////////////////////////////
-		File buildDirectory = configuration.getTempDirectory( debug );
-		for( File ofile : helper.getFilesThatNeedLinking(buildDirectory) )
+		File objectDirectory = configuration.getObjectDirectory();
+		for( File ofile : helper.getFilesThatNeedLinking(objectDirectory) )
 		{
 			commandline.createArgument().setFile( ofile );
 		}
@@ -331,13 +291,6 @@ public class CompilerGCC implements Compiler
 		/////// additional args ///////
 		String[] commands = Commandline.translateCommandline( configuration.getLinkerArgs() );
 		commandline.addArguments( commands );
-
-		// add in the debug command if it is not already present
-		if( debug )
-		{
-			if( StringUtilities.arrayContains(commands, "-g") == false )
-				commandline.createArgument().setValue( "-g" );
-		}
 
 		// return the finished product!
 		return commandline;
