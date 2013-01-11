@@ -247,8 +247,9 @@ public class CompilerGCC implements Compiler
 		commandline.setExecutable( executable );
 
 		/////// output file name ///////
+		File outputFile = helper.getPlatformSpecificOutputFile();
 		commandline.createArgument().setValue( "-o" );
-		commandline.createArgument().setFile( helper.getPlatformSpecificOutputFile() );
+		commandline.createArgument().setFile( outputFile );
 		
 		////////////////////////////////////
 		/////// object files to link ///////
@@ -263,9 +264,16 @@ public class CompilerGCC implements Compiler
 		if( configuration.getOutputType() == OutputType.SHARED )
 		{
 			if( Platform.getOsPlatform().isMac() )
+			{
 				commandline.createArgument().setValue( "-dynamiclib" );
+				// add the rpath setting if one isn't present
+				if( configuration.getLinkerArgs().contains("install_name") == false )
+					commandline.createArgument().setLine( "-install_name @rpath/"+outputFile.getName() );
+			}
 			else if( Platform.getOsPlatform().isLinux() )
+			{
 				commandline.createArgument().setValue( "-shared" );
+			}
 		}
 		
 		/////// library search paths /////// 
