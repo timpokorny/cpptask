@@ -1,5 +1,5 @@
 /*
- *   Copyright 2007 littlebluefroglabs.com
+ *   Copyright 2013 littlebluefroglabs.com
  *
  *   This file is part of cpptask.
  *
@@ -303,7 +303,12 @@ public class CppTask extends Task
 	}
 
 	/**
-	 * Add a symbol definition that will be used in the compile
+	 * Add a symbol definition that will be used in the compile.
+	 * 
+	 * Define elements are specified in the ant build with a single "name" attribute.
+	 * This attribute can be the symbol to define, or it can contain multiple symbol
+	 * definitions separated by a ",". If there is a "," present, this method will
+	 * split all the defines up and create an individual entry for each.
 	 */
 	public void addDefine( Define define )
 	{
