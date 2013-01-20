@@ -161,7 +161,7 @@ public class BuildConfiguration
 		ArrayList<Define> sanitizedDefines = new ArrayList<Define>();
 		for( Define current : this.defines )
 		{
-			if( current.getName() == null )
+			if( current.getName() == null || current.getName().trim().isEmpty() )
 				continue;
 
 			// check to see if the symbol definition has multiple entries (comma-separated)
