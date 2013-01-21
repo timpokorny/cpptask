@@ -213,8 +213,12 @@ public class CompilerMSVC implements Compiler
 	 *   <li>The Visual Studio environment setup calls (vcvarsall.bat)</li>
 	 *   <li>Any pre-commands coming from the task</li>
 	 * </ul>
-	 * @param baseCommand
-	 * @return
+	 * 
+	 * This is used to ensure that the VC compiler executables can be found and that
+	 * any cross-compiler options are set up.
+	 * 
+	 * @param baseCommand The base command line
+	 * @return The updated command line
 	 */
 	private String[] prependEnvironment( String[] baseCommand )
 	{

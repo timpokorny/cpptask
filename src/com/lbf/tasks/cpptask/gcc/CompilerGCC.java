@@ -31,6 +31,7 @@ import com.lbf.tasks.cpptask.Define;
 import com.lbf.tasks.cpptask.IncludePath;
 import com.lbf.tasks.cpptask.Library;
 import com.lbf.tasks.cpptask.OutputType;
+import com.lbf.tasks.utils.Arch;
 import com.lbf.tasks.utils.Platform;
 
 /**
@@ -170,6 +171,9 @@ public class CompilerGCC implements Compiler
 		commandline.setExecutable( executable );
 		commandline.createArgument().setValue( "-c" );
 		
+		////// platform architecture //////
+		appendCompilerArchitecture( commandline );
+		
 		////// includes //////
 		for( IncludePath path : configuration.getIncludePaths() )
 		{
@@ -195,6 +199,52 @@ public class CompilerGCC implements Compiler
 		return commandline;
 	}
 
+	/**
+	 * Return the type of compiler we need to use. Calculated as follows:
+	 * <ul>
+	 *   <li>If we are on a 32-bit system and building a 32-bit target: return "-arch i386" (mac) or "-m32"</li>
+	 *   <li>If we are on a 64-bit system and building a 64-bit target: return amd64</li>
+	 *   <li>If we are on a 32-bit system and building a 64-bit target: return x86_amd64</li>
+	 * </ul>
+	 */
+	private void appendCompilerArchitecture( Commandline commandline )
+	{
+		Arch osArch = Arch.getOsArch();
+		Arch outArch = configuration.getOutputArch();
+		
+		// warn them if they're trying to do a 64-bit cross-compile
+		if( (osArch == Arch.x86) && (outArch == Arch.amd64) )
+			debug( "Building 64-bit target on 32-bit system. Must have multilib installed." );
+		
+		// generate the appropriate compile command line argument
+		if( outArch == Arch.x86 )
+		{
+			debug( "(system: "+osArch+") Build target arch: x86" );
+			if( Platform.getOsPlatform().isLinux() )
+			{
+				commandline.createArgument().setValue( "-m32" );
+			}
+			else if( Platform.getOsPlatform().isMac() )
+			{
+				commandline.createArgument().setValue( "-arch" );
+				commandline.createArgument().setValue( "i386" );
+			}
+		}
+		else
+		{
+			debug( "(system: "+osArch+") Build target arch: amd64" );
+			if( Platform.getOsPlatform().isLinux() )
+			{
+				commandline.createArgument().setValue( "-m64" );
+			}
+			else if( Platform.getOsPlatform().isMac() )
+			{
+				commandline.createArgument().setValue( "-arch" );
+				commandline.createArgument().setValue( "x86_64" );
+			}
+		}
+	}
+	
 	//////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////// Linker Methods /////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -275,7 +325,10 @@ public class CompilerGCC implements Compiler
 				commandline.createArgument().setValue( "-shared" );
 			}
 		}
-		
+
+		////// platform architecture //////
+		appendCompilerArchitecture( commandline );
+
 		/////// library search paths /////// 
 		for( Library library : configuration.getLibraries() )
 		{
@@ -302,6 +355,14 @@ public class CompilerGCC implements Compiler
 
 		// return the finished product!
 		return commandline;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////// Private Helper Methods /////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////
+	private void debug( String message )
+	{
+		task.log( message, Project.MSG_DEBUG );
 	}
 
 	//----------------------------------------------------------
