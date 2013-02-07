@@ -35,6 +35,7 @@ import org.apache.tools.ant.Task;
 
 import com.lbf.tasks.cpptask.CppTask.OutputArchAntEnum;
 import com.lbf.tasks.utils.Arch;
+import com.lbf.tasks.utils.Platform;
 import com.lbf.tasks.utils.PropertyUtils;
 
 /**
@@ -195,6 +196,18 @@ public class GetJdkTask extends Task
 		// Our last chance. If there is not JDK here, or it isn't what we want we fail the build
 		if( fallback != null )
 		{
+			// If the fallback location includes the string "(x86)" and we're on Windows 32-bit,
+			// the user has probably set path as if we were on a Windows 64-bit machine. That is,
+			// they've presumed that the location is Program Files (x86) which is where 32-bit
+			// stuff is on a 64-bit machine, but not on a 32-bit machine. Try and be graceful
+			// in this situation and change it for them
+			if( Platform.getOsPlatform().isWindows32() && fallback.contains("(x86)") )
+			{
+				log( "Detected Win64 specification location on Win32 OS: [Program Files (x86)]" );
+				fallback = fallback.replace( " (x86)", "" );
+				log( "Converting to [Program Files]: "+fallback );
+			}
+			
 			if( containsJdk(fallback) == false )
 			{
 				throw new BuildException( "Fallback location does not point to a JDK. "+
@@ -210,6 +223,7 @@ public class GetJdkTask extends Task
 			{
 				// if it is set, and it points to an appropriate JDK, we're all done
 				getProject().setNewProperty( property, fallback );
+				log( "JDK located using fallback location: "+fallback, MSG_INFO );
 				return;
 			}
 		}

@@ -56,12 +56,32 @@ public enum Platform
 	{
 		return this == linux32 || this == linux64;
 	}
+	
+	public boolean isLinux32()
+	{
+		return this == linux32;
+	}
+	
+	public boolean isLinux64()
+	{
+		return this == linux64;
+	}
 
 	public boolean isWindows()
 	{
 		return this == win32 || this == win64;
 	}
 	
+	public boolean isWindows32()
+	{
+		return this == win32;
+	}
+	
+	public boolean isWindows64()
+	{
+		return this == win64;
+	}
+
 	public boolean isMac()
 	{
 		return this == macosx;
