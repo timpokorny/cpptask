@@ -1,5 +1,5 @@
 /*
- *   Copyright 2013 littlebluefroglabs.com
+ *   Copyright 2013 The Portico Project
  *
  *   This file is part of cpptask.
  *

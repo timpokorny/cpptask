@@ -14,16 +14,10 @@
  */
 package com.lbf.tasks.platform;
 
+import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
 
-import com.lbf.tasks.utils.Arch;
-import com.lbf.tasks.utils.PropertyUtils;
-
-/**
- * This class gets the {@link Arch} of the underlying JVM and stores its name in the
- * provided property (defaults to "jvm.arch").
- */
-public class GetJvmArchTask extends Task
+public class GetCompilerFromTargetNameTask extends Task
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -32,28 +26,51 @@ public class GetJvmArchTask extends Task
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
-	private String property;
+	private String property = "vc.compiler";
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
-	public GetJvmArchTask()
-	{
-		this.property = "jvm.arch";
-	}
 
 	//----------------------------------------------------------
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
-
 	public void execute()
 	{
-		PropertyUtils.setProjectProperty( getProject(),
-		                                  property,
-		                                  Arch.getJvmArch().toString(),
-		                                  false );
+		// make sure we're actually inside a target
+		if( this.getOwningTarget() == null )
+			throw new BuildException( "Must call "+getTaskName()+" from within a target" );
+		
+		// get the target name
+		String targetName = this.getOwningTarget().getName();
+		String compilerName = "unknown";
+		if( targetName.contains("vc6") )
+			compilerName = "vc6";
+		else if( targetName.contains("vc7") )
+			compilerName = "vc7";
+		else if( targetName.contains("vc8") )
+			compilerName = "vc8";
+		else if( targetName.contains("vc9") )
+			compilerName = "vc9";
+		else if( targetName.contains("vc10") )
+			compilerName = "vc10";
+		else if( targetName.contains("vc11") )
+			compilerName = "vc11";
+		else if( targetName.contains("vc12") ) // all hail the future!
+			compilerName = "vc12";
+		else if( targetName.contains("vc13") ) // all hail the future!
+			compilerName = "vc13";
+		else if( targetName.contains("vc14") ) // all hail the future!
+			compilerName = "vc14";
+		else if( targetName.contains("vc15") ) // all hail the future!
+			compilerName = "vc15";
+		else
+			throw new BuildException( "Unable to find vcXX marker in target name: "+targetName );
+
+		// set the name
+		this.getProject().setProperty( property, compilerName );
 	}
-	
+
 	////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Accessor and Mutator Methods ///////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////

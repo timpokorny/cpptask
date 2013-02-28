@@ -1,22 +1,16 @@
 /*
- *   Copyright 2012 Calytrix Technologies
+ *   Copyright 2013 The Portico Project
  *
  *   This file is part of cpptask.
  *
- *   NOTICE:  All information contained herein is, and remains
- *            the property of Calytrix Technologies Pty Ltd.
- *            The intellectual and technical concepts contained
- *            herein are proprietary to Calytrix Technologies Pty Ltd.
- *            Dissemination of this information or reproduction of
- *            this material is strictly forbidden unless prior written
- *            permission is obtained from Calytrix Technologies Pty Ltd.
+ *   cpptask is free software; you can redistribute it and/or modify
+ *   it under the terms of the Common Developer and Distribution License (CDDL) 
+ *   as published by Sun Microsystems. For more information see the LICENSE file.
  *
- *   Unless required by applicable law or agreed to in writing,
- *   software distributed under the License is distributed on an
- *   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *   KIND, either express or implied.  See the License for the
- *   specific language governing permissions and limitations
- *   under the License.
+ *   Use of this software is strictly AT YOUR OWN RISK!!!
+ *   If something bad happens you do not have permission to come crying to me.
+ *   (that goes for your lawyer as well)
+ *
  */
 package com.lbf.tasks.platform;
 
@@ -26,8 +20,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Properties;
-
-import static org.apache.tools.ant.Project.*;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -99,10 +91,10 @@ public class GetJdkTask extends Task
 
 	public void execute()
 	{
-		log( "Searching for a JDK: ", Project.MSG_VERBOSE );
-		log( "  => Property to use/set       = "+property, Project.MSG_VERBOSE );
-		log( "  => Desired JVM Architecture  = "+architecture, Project.MSG_VERBOSE );
-		log( "  => Fallback/default location = "+fallback, Project.MSG_VERBOSE );
+		logVerbose( "Searching for a JDK: " );
+		logVerbose( "  => Property to use/set       = "+property );
+		logVerbose( "  => Desired JVM Architecture  = "+architecture );
+		logVerbose( "  => Fallback/default location = "+fallback );
 
 		/////////////////////////////////////////////////////////////////////////////////////
 		// 1. Check the given property to see if it already points to a location           //
@@ -141,21 +133,21 @@ public class GetJdkTask extends Task
 			if( containsJdkForArchitecture(sysprop,architecture) )
 			{
 				// we're all good!
-				log( "Found JDK. System property java.home points to valid JDK.", MSG_VERBOSE );
-				log( "  => Set property ["+property+"] to ["+sysprop+"]", MSG_VERBOSE );
+				logVerbose( "Found JDK. System property java.home points to valid JDK." );
+				logVerbose( "  => Set property ["+property+"] to ["+sysprop+"]" );
 				PropertyUtils.setProjectProperty( getProject(), property, sysprop, false );
 				return;
 			}
 			else
 			{
-				log( "java.home system property points to a JDK, but not of the desired architecture ["+
-				     architecture+"]. Skipping.", Project.MSG_VERBOSE );
+				logVerbose( "java.home system property points to a JDK, but not of the "+
+				            "desired architecture ["+architecture+"]. Skipping." );
 			}
 		}
 		else
 		{
-			log( "java.home system proprty points to a standalone JRE. A full JDK is required. Skipping",
-			     Project.MSG_VERBOSE );
+			logVerbose( "java.home system proprty points to a standalone JRE. "+
+			            "A full JDK is required. Skipping" );
 		}
 		
 		////////////////////////////////////////////////////////////
@@ -180,14 +172,13 @@ public class GetJdkTask extends Task
 				// DO NOT FAIL THE BUILD! It points to a JDK, but not one we can use. Just log
 				// the message to inform them and move on to the fallback. They might be running
 				// in a different JDK to the one they want to get a reference to
-				log( "JAVA_HOME environment variable points to a JDK, but not of the desired architecture ["+
-				     architecture+"]: Skipping", Project.MSG_VERBOSE );
+				logVerbose( "JAVA_HOME environment variable points to a JDK, but not of the "+
+				            "desired architecture ["+architecture+"]: Skipping" );
 			}
 		}
 		else
 		{
-			log( "The JAVA_HOME environment variable was not set, moving on to fallback location",
-			     Project.MSG_VERBOSE );
+			logVerbose( "The JAVA_HOME environment variable not set, checking fallback location" );
 		}
 
 		////////////////////////////////////////////////
@@ -223,17 +214,17 @@ public class GetJdkTask extends Task
 			{
 				// if it is set, and it points to an appropriate JDK, we're all done
 				getProject().setNewProperty( property, fallback );
-				log( "JDK located using fallback location: "+fallback, MSG_INFO );
+				logVerbose( "JDK located using fallback location: "+fallback );
 				return;
 			}
 		}
 		else
 		{
 			// we haven't found a JDK and the fallback is null. we're done.
-			log( "Cannot locate a JDK in any searched location. Try the following:", MSG_ERR );
-			log( "  => Set the Ant property ["+property+"] to point at a valid JDK", MSG_ERR );
-			log( "  => Set the JAVA_HOME environment variable to point at a valid JDK", MSG_ERR );
-			log( "  => Ensure the provided fallback location points to a valid JDK", MSG_ERR );
+			logError( "Cannot locate a JDK in any searched location. Try the following:" );
+			logError( "  => Set the Ant property ["+property+"] to point at a valid JDK" );
+			logError( "  => Set the JAVA_HOME environment variable to point at a valid JDK" );
+			logError( "  => Ensure the provided fallback location points to a valid JDK" );
 			throw new BuildException( "Cannot locate a JDK in any searched locations" );
 		}
 		
@@ -390,6 +381,16 @@ public class GetJdkTask extends Task
 			throw new BuildException( "Error determining JDK architecture while running \"java -version\": "+
 			                          ioex.getMessage(), ioex );
 		}
+	}
+
+	private void logVerbose( String message )
+	{
+		log( message, Project.MSG_VERBOSE );
+	}
+	
+	public void logError( String message )
+	{
+		log( message, Project.MSG_ERR );
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////

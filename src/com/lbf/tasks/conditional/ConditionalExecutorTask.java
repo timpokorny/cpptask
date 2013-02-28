@@ -1,5 +1,5 @@
 /*
- *   Copyright 2008 littlebluefroglabs.com
+ *   Copyright 2013 The Portico Project
  *
  *   This file is part of cpptask.
  *
@@ -27,8 +27,26 @@ import org.apache.tools.ant.TaskContainer;
  * Wraps a set if tasks so that a user can define multiple properties that should or should not
  * be set before the target executes. Like allowing "if" and "unless" attributes of a target to
  * specify multiple values.
+ * <p/>
+ * Example:
+ * <pre>
+ *   <execute ifAll="required1,required2" ifAny="at,least,one" unlessAny="unless1,unless2">
+ *   	<someTask.../>
+ *   </execute>
+ * </pre>
+ * 
+ * <b>Evaluation Order</b>
+ * <p/>
+ * <ol>
+ *   <li>All properties specific in "ifAll" must be set. If any of these are not present,
+ *       the task will not execute.</li>
+ *   <li>All properties specific in "unlessAny" must NOT be set. If any of these are present,
+ *       the task will not execute.</li>
+ *   <li>At least one of the properties in "ifAny" must be present. If at leave one is not
+ *       present, the task will not execute.</li>
+ * </ol> 
  */
-public class ConditionalExecutor extends Task implements TaskContainer
+public class ConditionalExecutorTask extends Task implements TaskContainer
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -39,21 +57,23 @@ public class ConditionalExecutor extends Task implements TaskContainer
 	//----------------------------------------------------------
 	private String name;
 	private ArrayList<Task> tasks;
-	private HashSet<String> required;
-	private HashSet<String> unless;
+	private HashSet<String> ifAll;
+	private HashSet<String> ifAny;
+	private HashSet<String> unlessAny;
 	private boolean failOnError;
 	
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
 
-	public ConditionalExecutor()
+	public ConditionalExecutorTask()
 	{
 		super();
 		this.failOnError = false;
 		this.tasks = new ArrayList<Task>();
-		this.required = new HashSet<String>();
-		this.unless = new HashSet<String>();
+		this.ifAll = new HashSet<String>();
+		this.ifAny = new HashSet<String>();
+		this.unlessAny = new HashSet<String>();
 	}
 
 	//----------------------------------------------------------
@@ -64,8 +84,7 @@ public class ConditionalExecutor extends Task implements TaskContainer
 		// if failOnError is set, shouldExecute() will thrown an exception
 		if( shouldExecute() == false )
 			return;
-			
-		
+
 		// execute the wrapped tasks now that we know we're good
 		executeWrappedTasks();
 	}
@@ -81,7 +100,7 @@ public class ConditionalExecutor extends Task implements TaskContainer
 	{
 		// make sure all the required properties are present
 		Hashtable existingProperties = super.getProject().getProperties();
-		for( String property : required )
+		for( String property : ifAll )
 		{
 			if( existingProperties.containsKey(property) == false )
 			{
@@ -93,7 +112,7 @@ public class ConditionalExecutor extends Task implements TaskContainer
 		}
 		
 		// make sure NONE of the excluded properties are present
-		for( String property : unless )
+		for( String property : unlessAny )
 		{
 			if( existingProperties.containsKey(property) )
 			{
@@ -101,6 +120,26 @@ public class ConditionalExecutor extends Task implements TaskContainer
 					throw new BuildException( "Property that should not be set is set: "+property );
 				else
 					return false;
+			}
+		}
+		
+		// make sure that at least ONE of the "ifAny" properties is present
+		if( this.ifAny.isEmpty() == false )
+		{
+			boolean foundOne = false;
+			for( String property : ifAny )
+			{
+				if( existingProperties.containsKey(property) )
+				{
+					foundOne = true;
+					break;
+				}
+			}
+			
+			if( !foundOne )
+			{
+				throw new BuildException( "Needed at least one of these properties to be set: "+
+				                          this.ifAny.toString() );
 			}
 		}
 		
@@ -139,22 +178,27 @@ public class ConditionalExecutor extends Task implements TaskContainer
 
 	public void addConfiguredRequired( Required value )
 	{
-		this.required.addAll( explode(value.property) );
+		this.ifAll.addAll( explode(value.property) );
 	}
 	
 	public void addConfiguredUnless( Unless value )
 	{
-		this.unless.addAll( explode(value.property) );
+		this.unlessAny.addAll( explode(value.property) );
 	}
 	
 	public void setIfAll( String value )
 	{
-		this.required.addAll( explode(value) );
+		this.ifAll.addAll( explode(value) );
+	}
+	
+	public void setIfAny( String value )
+	{
+		this.ifAny.addAll( explode(value) );
 	}
 	
 	public void setUnlessAny( String value )
 	{
-		this.required.addAll( explode(value) );
+		this.ifAll.addAll( explode(value) );
 	}
 	
 	private HashSet<String> explode( String given )

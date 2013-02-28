@@ -1,22 +1,16 @@
 /*
- *   Copyright 2012 Calytrix Technologies
+ *   Copyright 2013 The Portico Project
  *
  *   This file is part of cpptask.
  *
- *   NOTICE:  All information contained herein is, and remains
- *            the property of Calytrix Technologies Pty Ltd.
- *            The intellectual and technical concepts contained
- *            herein are proprietary to Calytrix Technologies Pty Ltd.
- *            Dissemination of this information or reproduction of
- *            this material is strictly forbidden unless prior written
- *            permission is obtained from Calytrix Technologies Pty Ltd.
+ *   cpptask is free software; you can redistribute it and/or modify
+ *   it under the terms of the Common Developer and Distribution License (CDDL) 
+ *   as published by Sun Microsystems. For more information see the LICENSE file.
  *
- *   Unless required by applicable law or agreed to in writing,
- *   software distributed under the License is distributed on an
- *   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *   KIND, either express or implied.  See the License for the
- *   specific language governing permissions and limitations
- *   under the License.
+ *   Use of this software is strictly AT YOUR OWN RISK!!!
+ *   If something bad happens you do not have permission to come crying to me.
+ *   (that goes for your lawyer as well)
+ *
  */
 package com.lbf.tasks.utils;
 
