@@ -190,6 +190,14 @@ public class ConditionalExecutorTask extends Task implements TaskContainer
 	{
 		this.ifAll.addAll( explode(value) );
 	}
+
+	/**
+	 * The same as {@link #setIfAll(String)}
+	 */
+	public void setIf( String value )
+	{
+		this.ifAll.addAll( explode(value) );
+	}
 	
 	public void setIfAny( String value )
 	{
@@ -199,6 +207,14 @@ public class ConditionalExecutorTask extends Task implements TaskContainer
 	public void setUnlessAny( String value )
 	{
 		this.ifAll.addAll( explode(value) );
+	}
+
+	/**
+	 * The same as {@link #setUnlessAny(String)}
+	 */
+	public void setUnless( String value )
+	{
+		this.unlessAny.addAll( explode(value) );
 	}
 	
 	private HashSet<String> explode( String given )

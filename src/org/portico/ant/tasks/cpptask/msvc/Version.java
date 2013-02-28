@@ -29,22 +29,25 @@ public enum Version
 	//----------------------------------------------------------
 	//                    ENUMERATED VALUES
 	//----------------------------------------------------------
-	VC7("VS70COMNTOOLS"),
-	VC8("VS80COMNTOOLS"),
-	VC9("VS90COMNTOOLS"),
-	VC10("VS100COMNTOOLS");
+	vc7("VS70COMNTOOLS", "Visual Studio 2003"),
+	vc8("VS80COMNTOOLS", "Visual Studio 2005"),
+	vc9("VS90COMNTOOLS", "Visual Studio 2008"),
+	vc10("VS100COMNTOOLS", "Visual Studio 2010"),
+	vc11("VS110COMNTOOLS", "Visual Studio 2012");
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
 	private String environmentVariable;
+	private String longName;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
-	private Version( String environmentVariable )
+	private Version( String environmentVariable, String longName )
 	{
 		this.environmentVariable = environmentVariable;
+		this.longName = longName;
 	}
 
 	//----------------------------------------------------------
@@ -56,6 +59,31 @@ public enum Version
 	public String getToolsEnvironmentVariable()
 	{
 		return this.environmentVariable;
+	}
+
+	public String getLongName()
+	{
+		return this.longName;
+	}
+
+	/**
+	 * This method will check for the presence of the specified Visual Studio version.
+	 * It will check to see if the relevant environment variable has been set, and if
+	 * it has it will validate that location exists.
+	 */
+	public boolean isPresent()
+	{
+		// check for the presence of the appropriate environment variable
+		String vcDirectory = System.getenv( getToolsEnvironmentVariable() );
+		if( vcDirectory == null )
+			return false;
+		
+		// check to make sure the vcvarsall.bat file exists relative to the
+		// location specified in the environment variable
+		StringBuilder builder = new StringBuilder( vcDirectory );
+		builder.append( "\\..\\..\\VC\\vcvarsall.bat" );
+		File file = new File( vcDirectory+"\\..\\..\\VC\\vcvarsall.bat" );
+		return file.exists();
 	}
 
 	/**

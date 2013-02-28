@@ -30,7 +30,8 @@ public enum CompilerType
 	VC7,
 	VC8,
 	VC9,
-	VC10;
+	VC10,
+	VC11;
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
@@ -63,13 +64,15 @@ public enum CompilerType
 			case GPP:
 				return new CompilerGCC("g++");
 			case VC7:
-				return new CompilerMSVC( Version.VC7 );
+				return new CompilerMSVC( Version.vc7 );
 			case VC8:
-				return new CompilerMSVC( Version.VC8 );
+				return new CompilerMSVC( Version.vc8 );
 			case VC9:
-				return new CompilerMSVC( Version.VC9 );
+				return new CompilerMSVC( Version.vc9 );
 			case VC10:
-				return new CompilerMSVC( Version.VC10 );
+				return new CompilerMSVC( Version.vc10 );
+			case VC11:
+				return new CompilerMSVC( Version.vc11 );
 			default:
 				throw new BuildException( "unsupported compiler type: " + type );
 		}
@@ -93,6 +96,8 @@ public enum CompilerType
 			return CompilerType.VC9;
 		else if( string.equalsIgnoreCase("vc10") )
 			return CompilerType.VC10;
+		else if( string.equalsIgnoreCase("vc11") )
+			return CompilerType.VC11;
 		else
 			throw new BuildException( "Unknown compiler type: " + string );
 	}
