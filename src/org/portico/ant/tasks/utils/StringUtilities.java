@@ -15,6 +15,7 @@
 package org.portico.ant.tasks.utils;
 
 import java.io.File;
+import java.util.List;
 
 public class StringUtilities
 {
@@ -45,6 +46,18 @@ public class StringUtilities
 		String[] strings = new String[files.length];
 		for( int i = 0; i < files.length; i++ )
 			strings[i] = files[i].getAbsolutePath();
+		
+		return strings;
+	}
+	
+	/**
+	 * Converts a List<File> to a String[] that contains the absolute paths of each file
+	 */
+	public static String[] filesToStrings( List<File> files )
+	{
+		String[] strings = new String[files.size()];
+		for( int i = 0; i < files.size(); i++ )
+			strings[i] = files.get(i).getAbsolutePath();
 		
 		return strings;
 	}

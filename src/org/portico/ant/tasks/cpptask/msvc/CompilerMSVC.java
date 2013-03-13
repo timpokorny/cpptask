@@ -95,16 +95,14 @@ public class CompilerMSVC implements Compiler
 	{
 		task.log( "Starting Compile" );
 
-		// create the command line that will be used for each compile
-		// this is just the part of it that doesn't include the file being compiled
-		Commandline command = generateCompileCommand();
-
-		// get all the files that we should compile
-		// this will run checks for things like incremental compiling
+		// Start the compilation, splitting it into two steps: one for source and one for resources
+		/////////////////////////////////////////////////
+		// 1. Get a list of all files to compile       //
+		//    Run all checks for incremental compiling //
+		/////////////////////////////////////////////////
+		// 1. Get a list of all files to compile (considering checks for incremental compiling)
 		File objectDirectory = configuration.getObjectDirectory();
 		File[] filesToCompile = helper.getFilesThatNeedCompiling( objectDirectory );
-		task.log( "" + filesToCompile.length + " files to be compiled." );
-
 		// make sure we have files to compile!
 		if( filesToCompile.length == 0 )
 		{
@@ -112,11 +110,49 @@ public class CompilerMSVC implements Compiler
 			return;
 		}
 		
+		////////////////////////////////////////////////////////////////////////////////////
+		// 2. Split the returned set of files into "resource files" and "everything else" //
+		////////////////////////////////////////////////////////////////////////////////////
+		ArrayList<File> sourceFiles = new ArrayList<File>();
+		ArrayList<File> resourceFiles = new ArrayList<File>();
+		for( File file : filesToCompile )
+		{
+			if( file.getName().endsWith(".rc") )
+				resourceFiles.add( file );
+			else
+				sourceFiles.add( file );
+		}
+
+		//////////////////////////////////////////////////
+		// 4. If we have any source files, compile them //
+		//////////////////////////////////////////////////
+		if( sourceFiles.isEmpty() == false )
+			compileSourceFiles( sourceFiles, objectDirectory );
+
+		////////////////////////////////////////////////////
+		// 5. If we have any resource files, compile them //
+		////////////////////////////////////////////////////
+		if( resourceFiles.isEmpty() == false )
+			compileResourceFiles( resourceFiles, objectDirectory );
+
+		task.log( "Compile complete" );
+	}
+
+	/**
+	 * This task will generate and execute the compile command for all located source files.
+	 */
+	private void compileSourceFiles( ArrayList<File> files, File objectDirectory )
+	{
+		task.log( "" + files.size() + " files to be compiled." );
+
+		// generate the command base
+		Commandline command = generateCompileCommand();
+
 		// create the response file which has all the compile information
 		File responseFile = createResponseFile( "compile-files",
 		                                        objectDirectory,
-		                                        StringUtilities.filesToStrings(filesToCompile) );
-		
+		                                        StringUtilities.filesToStrings(files) );
+
 		// put the response file on the end of the command line
 		command.createArgument().setValue( "@"+responseFile.getAbsolutePath() );
 		
@@ -130,16 +166,14 @@ public class CompilerMSVC implements Compiler
 		try
 		{
 			// log what we're doing
-			task.log( "Starting Compile" );
+			task.log( "Starting compile" );
 			task.log( "Running compile command: ", Project.MSG_VERBOSE );
 			for( String argument : runner.getCommandline() )
 				task.log( argument, Project.MSG_VERBOSE );
 
 			int exitValue = runner.execute();
 			if( exitValue != 0 )
-			{
 				throw new BuildException( "Compile Failed, (exit value: " + exitValue + ")" );
-			}
 		}
 		catch( IOException e )
 		{
@@ -150,20 +184,50 @@ public class CompilerMSVC implements Compiler
 			             " full error: " + e.getMessage();
 			throw new BuildException( msg, e );
 		}
-		
-		// NOTE: I've been making some changes and now RC file support isn't as
-		//       simple as it once was. This will need to be added back as some
-		//       point in the future, perhaps by splitting the compile file array
-		//       into two separate ones (one for rc files, one for the rest):
-		//if(sourceFile.getName().endsWith(".rc"))
-		//{
-		//	// Is this a win32 resource file?
-		//	theCommand = new Commandline();
-		//	theCommand.setExecutable( "rc" );
-		//	theCommand.createArgument().setFile( sourceFile );
-		//}
+	}
 
-		task.log( "Compile complete" );
+	/**
+	 * This task will generate and execute the compile command for all located resource files.
+	 */
+	private void compileResourceFiles( ArrayList<File> files, File objectDirectory )
+	{
+		task.log( "" + files.size() + " resource files to be compiled." );
+
+		// generate the command base
+		Commandline command = generateResourceCompileCommand();
+
+		// append all the resource file names to the end of the command line
+		for( File file : files )
+			command.createArgument().setValue( file.getAbsolutePath() );
+
+		// prepend the pre-command (if there is one) and run this thing
+		Execute runner = new Execute( new LogStreamHandler(configuration.getTask(),
+		                                                   Project.MSG_INFO,
+		                                                   Project.MSG_WARN) );
+		
+		runner.setCommandline( prependEnvironment(command.getCommandline()) );
+		runner.setWorkingDirectory( objectDirectory );
+		try
+		{
+			// log what we're doing
+			task.log( "Starting resource compile" );
+			task.log( "Running resource compile command: ", Project.MSG_VERBOSE );
+			for( String argument : runner.getCommandline() )
+				task.log( argument, Project.MSG_VERBOSE );
+
+			int exitValue = runner.execute();
+			if( exitValue != 0 )
+				throw new BuildException( "Resource Compile Failed, (exit value: "+exitValue+")" );
+		}
+		catch( IOException e )
+		{
+			// most likely, the compiler isn't on the path and can't be found. print out
+			// kill the build with a nicer error
+			String msg = "There was a problem running the compiler, this usually occurs when " +
+			             "windows can't find the compiler (rc.exe), make sure it is on your path." +
+			             " full error: " + e.getMessage();
+			throw new BuildException( msg, e );
+		}
 	}
 
 	/**
@@ -202,6 +266,46 @@ public class CompilerMSVC implements Compiler
 		for( Define define : configuration.getDefines() )
 		{
 			commandline.createArgument().setLine( "/D" + define.getName() );
+		}
+		
+		return commandline;
+	}
+
+	/**
+	 * Generates the command that will be used for the compile of each relevant resource file.
+	 * This is just the extra stuff that doesn't include the name of the file being compiled.
+	 */
+	private Commandline generateResourceCompileCommand()
+	{
+		// create the working directories if they don't already exist
+		configuration.getObjectDirectory().mkdirs();
+
+		// create the command line
+		Commandline commandline = new Commandline();
+		commandline.setExecutable( "rc" );
+		//commandline.createArgument().setValue( "/nologo" ); -- doesn't work with vc8?
+
+		/////// additional args ////////
+		// do this up front
+		//String[] commands = Commandline.translateCommandline( configuration.getCompilerArgs() );
+		//commandline.addArguments( commands );
+		
+		////// includes //////
+		for( IncludePath path : configuration.getIncludePaths() )
+		{
+			// make sure there is a path
+			if( path.getPath() != null )
+			{
+				// add each path element to the line
+				for( String temp : path.getPath().list() )
+					commandline.createArgument().setLine( "/i" + Commandline.quoteArgument(temp) );
+			}
+		}
+		
+		////// defines ///////
+		for( Define define : configuration.getDefines() )
+		{
+			commandline.createArgument().setLine( "/d" + define.getName() );
 		}
 		
 		return commandline;

@@ -174,9 +174,12 @@ public class BuildHelper
 	 */
 	private boolean isSourceFile( File file )
 	{
-		if( file.getName().endsWith(".c") ||
-		    file.getName().endsWith(".cpp") ||
-		    file.getName().endsWith(".rc") )
+		String filename = file.getName();
+		if( filename.endsWith(".c") ||
+		    filename.endsWith(".cpp") ||
+		    filename.endsWith(".rc") ||
+		    filename.endsWith(".cxx") ||
+		    filename.endsWith(".hxx") )
 		{
 			return true;
 		}

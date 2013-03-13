@@ -26,7 +26,7 @@ import org.portico.ant.tasks.utils.PropertyUtils;
  * The primary motivating case was to take a java package name and convert it into a path
  * (converting all the "." into "/").
  */
-public class StringReplace extends Task
+public class StringReplaceTask extends Task
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
