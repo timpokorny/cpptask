@@ -17,7 +17,6 @@ package org.portico.ant.tasks.cpptask;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringTokenizer;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -130,9 +129,6 @@ public class BuildConfiguration
 	 */
 	public void validateConfiguration() throws BuildException
 	{
-		// make sure we're properly extracted the configuration data into the right form
-		sanitizeConfiguration();
-		
 		// check to see if we have an output to generate
 		if( this.outputName == null )
 			throw new BuildException( "The attribute \"outputName\" is required" );
@@ -140,51 +136,6 @@ public class BuildConfiguration
 		// make sure they've told us where things are going to go
 		if( this.workingDirectory == null )
 			throw new BuildException( "The attribute \"workingDirectory\" is required" );
-	}
-
-	/**
-	 * Some parts of the build cannot be properly sanitized when it is being constructed.
-	 * There are strange things that Ant will do when adding content from task sub-elements
-	 * such as the <define> tags CppTask supports. Rather than create the {@link Define}
-	 * object, fill it out with attribute data and then pass it to the task to store, it
-	 * instead creates the object, passes it for storage and THEN fills out the content.
-	 * As a consequence, if you want to check that data and so any sort of work on it before
-	 * storing it, you can't, as it hasn't been set yet. Hence, we have this step here to
-	 * go back and do all the work we may have wanted to do earlier.
-	 * <p/>
-	 * This should be called from {@link BuildConfiguration#validateConfiguration()} before
-	 * it runs its validation.
-	 */
-	private void sanitizeConfiguration()
-	{
-		// check to see if any of the defines is housing multiple symbol definitions
-		ArrayList<Define> sanitizedDefines = new ArrayList<Define>();
-		for( Define current : this.defines )
-		{
-			if( current.getName() == null || current.getName().trim().isEmpty() )
-				continue;
-
-			// check to see if the symbol definition has multiple entries (comma-separated)
-			if( current.getName().contains(",") )
-			{
-				debug( "Multiple symbol definitions for single <define>: "+current.getName() );
-				StringTokenizer tokenizer = new StringTokenizer( current.getName(), "," );
-				while( tokenizer.hasMoreTokens() )
-				{
-					Define temp = new Define();
-					temp.setName( tokenizer.nextToken().trim() );
-					sanitizedDefines.add( temp );
-					debug( "Symbol Definition: "+temp.getName() );
-				}
-			}
-			else
-			{
-				sanitizedDefines.add( current );
-			}
-		}
-		
-		// replace the initial define set with the sanitized ones
-		this.defines = sanitizedDefines;
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -477,10 +428,10 @@ public class BuildConfiguration
 	////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////// Private Helper Methods ////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////
-	private void debug( String message )
-	{
-		task.log( message, Project.MSG_DEBUG );
-	}
+	//private void debug( String message )
+	//{
+	//	task.log( message, Project.MSG_DEBUG );
+	//}
 	
 	//----------------------------------------------------------
 	//                     STATIC METHODS

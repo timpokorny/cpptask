@@ -138,6 +138,9 @@ public class CompilerMSVC implements Compiler
 		task.log( "Compile complete" );
 	}
 
+	/***********************************************************************/
+	/*********************** Source Compiler Methods ***********************/
+	/***********************************************************************/
 	/**
 	 * This task will generate and execute the compile command for all located source files.
 	 */
@@ -148,10 +151,13 @@ public class CompilerMSVC implements Compiler
 		// generate the command base
 		Commandline command = generateCompileCommand();
 
+		// generate the argument list to put into the response file
+		List<String> arguments = new ArrayList<String>();
+		arguments.addAll( generateCompileCommandOptions() );
+		arguments.addAll( StringUtilities.filesToStrings(files) );
+
 		// create the response file which has all the compile information
-		File responseFile = createResponseFile( "compile-files",
-		                                        objectDirectory,
-		                                        StringUtilities.filesToStrings(files) );
+		File responseFile = createResponseFile( "compile-files", objectDirectory, arguments );
 
 		// put the response file on the end of the command line
 		command.createArgument().setValue( "@"+responseFile.getAbsolutePath() );
@@ -187,50 +193,6 @@ public class CompilerMSVC implements Compiler
 	}
 
 	/**
-	 * This task will generate and execute the compile command for all located resource files.
-	 */
-	private void compileResourceFiles( ArrayList<File> files, File objectDirectory )
-	{
-		task.log( "" + files.size() + " resource files to be compiled." );
-
-		// generate the command base
-		Commandline command = generateResourceCompileCommand();
-
-		// append all the resource file names to the end of the command line
-		for( File file : files )
-			command.createArgument().setValue( file.getAbsolutePath() );
-
-		// prepend the pre-command (if there is one) and run this thing
-		Execute runner = new Execute( new LogStreamHandler(configuration.getTask(),
-		                                                   Project.MSG_INFO,
-		                                                   Project.MSG_WARN) );
-		
-		runner.setCommandline( prependEnvironment(command.getCommandline()) );
-		runner.setWorkingDirectory( objectDirectory );
-		try
-		{
-			// log what we're doing
-			task.log( "Starting resource compile" );
-			task.log( "Running resource compile command: ", Project.MSG_VERBOSE );
-			for( String argument : runner.getCommandline() )
-				task.log( argument, Project.MSG_VERBOSE );
-
-			int exitValue = runner.execute();
-			if( exitValue != 0 )
-				throw new BuildException( "Resource Compile Failed, (exit value: "+exitValue+")" );
-		}
-		catch( IOException e )
-		{
-			// most likely, the compiler isn't on the path and can't be found. print out
-			// kill the build with a nicer error
-			String msg = "There was a problem running the compiler, this usually occurs when " +
-			             "windows can't find the compiler (rc.exe), make sure it is on your path." +
-			             " full error: " + e.getMessage();
-			throw new BuildException( msg, e );
-		}
-	}
-
-	/**
 	 * Generates the command that will be used for the compile of each relevant file.
 	 * This is just the extra stuff that doesn't include the name of the file being compiled.
 	 */
@@ -245,10 +207,23 @@ public class CompilerMSVC implements Compiler
 		commandline.createArgument().setValue( "/c" );
 		commandline.createArgument().setValue( "/nologo" );
 
+		// moved most of these into generateCompileCommandOptions so they can go in a reponse file
+		return commandline;
+	}
+
+	/**
+	 * Generates a bunch of arguments for cl.exe to go in the response file. It is nice
+	 * to have everything in a response file so that it is recorded cleanly for debugging.
+	 */
+	private List<String> generateCompileCommandOptions()
+	{
+		ArrayList<String> options = new ArrayList<String>();
+		
 		/////// additional args ////////
 		// do this up front
 		String[] commands = Commandline.translateCommandline( configuration.getCompilerArgs() );
-		commandline.addArguments( commands );
+		for( String command : commands )
+			options.add( command );
 		
 		////// includes //////
 		for( IncludePath path : configuration.getIncludePaths() )
@@ -258,24 +233,104 @@ public class CompilerMSVC implements Compiler
 			{
 				// add each path element to the line
 				for( String temp : path.getPath().list() )
-					commandline.createArgument().setLine( "/I" + Commandline.quoteArgument(temp) );
+					options.add( "/I"+temp );
 			}
 		}
 		
 		////// defines ///////
 		for( Define define : configuration.getDefines() )
 		{
-			commandline.createArgument().setLine( "/D" + define.getName() );
+			options.add( "/D" + define.getName() );
 		}
 		
-		return commandline;
+		return options;
+	}
+
+	/**
+	 * Creates a new response file for use in compiling or linking and populates it with the
+	 * given commands.
+	 * 
+	 * @param name The name of the response file to create (excluding the extension)
+	 * @param directory The directory to put the response file in
+	 * @param commands The commands to write to the file
+	 */
+	private File createResponseFile( String name, File directory, List<String> commands )
+		throws BuildException
+	{
+		File responseFile = new File( directory, name+".rsp" );
+		
+		// write the commands to the response file, one per line
+		// this will truncate the file if it exists
+		try
+		{
+			task.log( "Writing response file ["+responseFile+"]", Project.MSG_VERBOSE );
+			PrintWriter writer = new PrintWriter( responseFile );
+			for( String command : commands )
+				writer.println( "\"" + command + "\"" );
+			
+			writer.close();
+		}
+		catch( Exception e )
+		{
+			throw new BuildException( "Problem writing response file: " + e.getMessage(), e );
+		}
+		
+		return responseFile;
+	}
+
+	/***********************************************************************/
+	/********************** Resource Compiler Methods **********************/
+	/***********************************************************************/
+	/**
+	 * This task will generate and execute the compile command for all located resource files.
+	 */
+	private void compileResourceFiles( ArrayList<File> files, File objectDirectory )
+	{
+		task.log( "" + files.size() + " resource files to be compiled." );
+
+		// append all the resource file names to the end of the command line
+		for( File file : files )
+		{
+			// generate the command base
+			Commandline command = generateResourceCompileCommand( file, objectDirectory );
+			command.createArgument().setValue( file.getAbsolutePath() );
+
+			// prepend the pre-command (if there is one) and run this thing
+			Execute runner = new Execute( new LogStreamHandler(configuration.getTask(),
+			                                                   Project.MSG_INFO,
+			                                                   Project.MSG_WARN) );
+			
+			runner.setCommandline( prependEnvironment(command.getCommandline()) );
+			runner.setWorkingDirectory( objectDirectory );
+			try
+			{
+				// log what we're doing
+				task.log( "Starting resource compile" );
+				task.log( "Running resource compile command: ", Project.MSG_VERBOSE );
+				for( String argument : runner.getCommandline() )
+					task.log( argument, Project.MSG_VERBOSE );
+
+				int exitValue = runner.execute();
+				if( exitValue != 0 )
+					throw new BuildException( "Resource Compile Failed, (exit value: "+exitValue+")" );
+			}
+			catch( IOException e )
+			{
+				// most likely, the compiler isn't on the path and can't be found. print out
+				// kill the build with a nicer error
+				String msg = "There was a problem running the compiler, this usually occurs when " +
+				             "windows can't find the compiler (rc.exe), make sure it is on your path." +
+				             " full error: " + e.getMessage();
+				throw new BuildException( msg, e );
+			}
+		}
 	}
 
 	/**
 	 * Generates the command that will be used for the compile of each relevant resource file.
 	 * This is just the extra stuff that doesn't include the name of the file being compiled.
 	 */
-	private Commandline generateResourceCompileCommand()
+	private Commandline generateResourceCompileCommand( File file, File outputDirectory )
 	{
 		// create the working directories if they don't already exist
 		configuration.getObjectDirectory().mkdirs();
@@ -284,6 +339,11 @@ public class CompilerMSVC implements Compiler
 		Commandline commandline = new Commandline();
 		commandline.setExecutable( "rc" );
 		//commandline.createArgument().setValue( "/nologo" ); -- doesn't work with vc8?
+
+		//////// output file ////////
+		File outputFile = new File( outputDirectory, file.getName() );
+		outputFile = StringUtilities.changeExtension( outputFile, ".res" );
+		commandline.createArgument().setValue( "/fo\""+outputFile.getAbsolutePath()+"\"" );
 
 		/////// additional args ////////
 		// do this up front
@@ -311,6 +371,9 @@ public class CompilerMSVC implements Compiler
 		return commandline;
 	}
 
+	/***********************************************************************/
+	/********************** Environment Setup Methods **********************/
+	/***********************************************************************/
 	/**
 	 * This method takes the base command line and prepends to it:
 	 * <ul>
@@ -402,38 +465,6 @@ public class CompilerMSVC implements Compiler
 		}
 	}
 
-	/**
-	 * Creates a new response file for use in compiling or linking and populates it with the
-	 * given commands.
-	 * 
-	 * @param name The name of the response file to create (excluding the extension)
-	 * @param directory The directory to put the response file in
-	 * @param commands The commands to write to the file
-	 */
-	private File createResponseFile( String name, File directory, String[] commands )
-		throws BuildException
-	{
-		File responseFile = new File( directory, name+".rsp" );
-		
-		// write the commands to the response file, one per line
-		// this will truncate the file if it exists
-		try
-		{
-			task.log( "Writing response file ["+responseFile+"]", Project.MSG_VERBOSE );
-			PrintWriter writer = new PrintWriter( responseFile );
-			for( String command : commands )
-				writer.println( "\"" + command + "\"" );
-			
-			writer.close();
-		}
-		catch( Exception e )
-		{
-			throw new BuildException( "Problem writing response file: " + e.getMessage(), e );
-		}
-		
-		return responseFile;
-	}
-
 	//////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////// Linker Methods /////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -447,11 +478,16 @@ public class CompilerMSVC implements Compiler
 		// generate the base command line
 		// object and library files done in a separate response file
 		Commandline commandline = generateLinkCommand();
+
+		// generate the argument list to put into the response file
+		List<String> arguments = new ArrayList<String>();
+		arguments.addAll( generateLinkCommandOptions() );
+		arguments.addAll( getFilesAndLibrariesToLinkWith() );
 		
 		// build the response file with the object and library files to link with
 		File responseFile = createResponseFile( "linker-files",
 		                                        configuration.getObjectDirectory(),
-		                                        getFilesAndLibrariesToLinkWith() );
+		                                        arguments );
 		
 		// put the response file on the end of the command
 		commandline.createArgument().setValue( "@"+responseFile.getAbsolutePath() );
@@ -504,24 +540,42 @@ public class CompilerMSVC implements Compiler
 		Commandline commandline = new Commandline();
 		commandline.setExecutable( "link" );
 		
-		/////// output file name ///////
-		commandline.createArgument().setValue( "/NOLOGO" );
-		commandline.createArgument().setValue( "/SUBSYSTEM:CONSOLE" );
-		//commandline.createArgument().setValue( "/INCREMENTAL:NO" );
-		commandline.createArgument().setValue( "/OUT:" + helper.getPlatformSpecificOutputFile() );
-		
-		/////// output file type ///////
-		if( configuration.getOutputType() == OutputType.SHARED )
-			commandline.createArgument().setValue( "/DLL" );
-		
+		// moved most of these to generateLinkCommandOptions
 		return commandline;
 	}
 
 	/**
-	 * Get an array of all the paths for files and libraries that we need to link with. These
+	 * Generates a bunch of arguments for link.exe to go in the response file. It is nice to have
+	 * everything in a response file so that it is recorded cleanly for debugging.
+	 */
+	private ArrayList<String> generateLinkCommandOptions()
+	{
+		ArrayList<String> commands = new ArrayList<String>();
+		
+		/////// output options ///////
+		commands.add( "/NOLOGO" );
+		commands.add( "/SUBSYSTEM:CONSOLE" );
+		//commands.add( "/INCREMENTAL:NO" );
+		
+		// figure out the output architecture and turn it into the approrpiate string
+		String targetArch = configuration.getOutputArch()==Arch.x86 ? "X86" : "X64";
+		commands.add( "/MACHINE:"+targetArch );
+		
+		/////// output file name ///////
+		commands.add( "/OUT:" + helper.getPlatformSpecificOutputFile() );
+		
+		/////// output file type ///////
+		if( configuration.getOutputType() == OutputType.SHARED )
+			commands.add( "/DLL" );
+
+		return commands;
+	}
+	
+	/**
+	 * Get an list of all the paths for files and libraries that we need to link with. These
 	 * paths will be added to the response file that will be used as input for the link command.
 	 */
-	private String[] getFilesAndLibrariesToLinkWith()
+	private List<String> getFilesAndLibrariesToLinkWith()
 	{
 		/////// libraries to link with ///////
 		// for each specified library, search in the library paths for a file of the name
@@ -539,7 +593,7 @@ public class CompilerMSVC implements Compiler
 				linkPaths.add( path );
 		}
 		
-		List<String> returnArray = new ArrayList<String>();
+		List<String> returnList = new ArrayList<String>();
 		// locate each library
 		for( String libToFind : linkWith )
 		{
@@ -561,7 +615,7 @@ public class CompilerMSVC implements Compiler
 				{
 					// found it!
 					found = true;
-					returnArray.add( possible.getAbsolutePath() );
+					returnList.add( possible.getAbsolutePath() );
 					//commandline.createArgument().setFile( possible );
 					task.log( "[located] "+possible, Project.MSG_VERBOSE );
 					break;
@@ -574,7 +628,7 @@ public class CompilerMSVC implements Compiler
 				{
 					// found it now :)
 					found = true;
-					returnArray.add( possible.getAbsolutePath() );
+					returnList.add( possible.getAbsolutePath() );
 					//commandline.createArgument().setFile( possible );
 					task.log( "[located] "+possible, Project.MSG_VERBOSE );
 					break;
@@ -590,18 +644,18 @@ public class CompilerMSVC implements Compiler
 		String[] commands = Commandline.translateCommandline( configuration.getLinkerArgs() );
 		//commandline.addArguments( commands );
 		for( String temp : commands )
-			returnArray.add( temp );
+			returnList.add( temp );
 
 		////////////////////////////////////
 		/////// object files to link ///////
 		////////////////////////////////////
 		for( File ofile : helper.getFilesThatNeedLinking(configuration.getObjectDirectory()) )
 		{
-			returnArray.add( ofile.getAbsolutePath() );
+			returnList.add( ofile.getAbsolutePath() );
 		}
 		
 		// return the finished product!
-		return returnArray.toArray( new String[0] );
+		return returnList;
 	}
 
 	//----------------------------------------------------------

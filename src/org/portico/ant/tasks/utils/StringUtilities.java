@@ -15,6 +15,7 @@
 package org.portico.ant.tasks.utils;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class StringUtilities
@@ -41,11 +42,11 @@ public class StringUtilities
 	/**
 	 * Converts a File[] to a String[] that contains the absolute paths of each file
 	 */
-	public static String[] filesToStrings( File[] files )
+	public static List<String> filesToStrings( File[] files )
 	{
-		String[] strings = new String[files.length];
-		for( int i = 0; i < files.length; i++ )
-			strings[i] = files[i].getAbsolutePath();
+		ArrayList<String> strings = new ArrayList<String>();
+		for( File file : files )
+			strings.add( file.getAbsolutePath() );
 		
 		return strings;
 	}
@@ -53,13 +54,44 @@ public class StringUtilities
 	/**
 	 * Converts a List<File> to a String[] that contains the absolute paths of each file
 	 */
-	public static String[] filesToStrings( List<File> files )
+	public static List<String> filesToStrings( List<File> files )
 	{
-		String[] strings = new String[files.size()];
-		for( int i = 0; i < files.size(); i++ )
-			strings[i] = files.get(i).getAbsolutePath();
+		ArrayList<String> strings = new ArrayList<String>();
+		for( File file : files )
+			strings.add( file.getAbsolutePath() );
 		
 		return strings;
+	}
+
+	/**
+	 * This method takes the given file and gets its absolute path. It then locates the last
+	 * instance of the "." character in that path, strips off everything from there on out and
+	 * replaces it with the given extension, returning a *new* file for the path. If there is
+	 * no extension, the given extension is added.
+	 * <p/>
+	 * No check is made to see whether the new file exists or not. The <code>newExtension</code>
+	 * parameter can be provided with or without a prepending '.' character. Examples of valid
+	 * values are ".new", "new".
+	 * 
+	 * @param existingFile The existing file
+	 * @param newExtension The extension to use in place of what already exists. Can be provided
+	 *                     with or without a prepended "." character
+	 * @return A new file pointing to the path of the old file with a new extension. No check is
+	 *         made to see whether or not this exists
+	 */
+	public static File changeExtension( File existingFile, String newExtension )
+	{
+		// make sure we have a period on the front of the extension
+		if( newExtension.startsWith(".") == false )
+			newExtension = "."+newExtension;
+		
+		// get the current path of the existing file and strip off the extension
+		String existingPath = existingFile.getAbsolutePath();
+		int lastPeriodIndex = existingPath.lastIndexOf( "." );
+		if( lastPeriodIndex > -1 )
+			existingPath = existingPath.substring( 0, lastPeriodIndex );
+		
+		return new File( existingPath+newExtension );
 	}
 
 	/**

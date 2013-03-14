@@ -315,8 +315,11 @@ public class BuildHelper
 		String fileName = sourceFile.getName();
 		fileName = fileName.substring( 0, fileName.lastIndexOf('.') );
 		
-		// append ".o" to the end of the file name
-		fileName += O_EXTENSION;
+		// append ".o" to the end of the file name or if it's a resource, leave it
+		if( sourceFile.getName().endsWith(".rc") )
+			fileName += ".res";
+		else
+			fileName += O_EXTENSION;
 		
 		// prefix the location with the object directory
 		fileName = objectDirectory.getAbsolutePath() + FILE_SEPARATOR + fileName;
