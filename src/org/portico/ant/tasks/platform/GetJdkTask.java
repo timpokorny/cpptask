@@ -100,15 +100,15 @@ public class GetJdkTask extends Task
 		// 1. Check the given property to see if it already points to a location           //
 		//    If it does, try and validate that location, failing the build it isn't valid //
 		/////////////////////////////////////////////////////////////////////////////////////
-		String existingLocation = getProject().getProperty( property );
-		if( existingLocation != null )
+		String existingProperty = getProject().getProperty( property );
+		if( existingProperty != null )
 		{
-			if( containsJdk(existingLocation) == false )
+			if( containsJdk(existingProperty) == false )
 			{
 				throw new BuildException( "Property ["+property+"] does not point to a JDK. "+
 				                          "Clear it or set to point at JDK (not a JRE)" );
 			}
-			else if( containsJdkForArchitecture(existingLocation,architecture) == false )
+			else if( containsJdkForArchitecture(existingProperty,architecture) == false )
 			{
 				throw new BuildException( "Property ["+property+"] points to a JDK of wrong architecture. "+
 				                          "Desired architecture is ["+architecture+"]." );
@@ -136,6 +136,7 @@ public class GetJdkTask extends Task
 				logVerbose( "Found JDK. System property java.home points to valid JDK." );
 				logVerbose( "  => Set property ["+property+"] to ["+sysprop+"]" );
 				PropertyUtils.setProjectProperty( getProject(), property, sysprop, false );
+				logLocated( sysprop );
 				return;
 			}
 			else
@@ -167,6 +168,7 @@ public class GetJdkTask extends Task
 				throw new BuildException( "JAVA_HOME environment variable set, but doesn't actually"+
 				                          "point to a JDK of any kind. Fix plz. kthxbai." );
 			}
+			
 			if( containsJdkForArchitecture(envvar,architecture) == false )
 			{
 				// DO NOT FAIL THE BUILD! It points to a JDK, but not one we can use. Just log
@@ -174,6 +176,25 @@ public class GetJdkTask extends Task
 				// in a different JDK to the one they want to get a reference to
 				logVerbose( "JAVA_HOME environment variable points to a JDK, but not of the "+
 				            "desired architecture ["+architecture+"]: Skipping" );
+			}
+			else
+			{
+				// we found one!
+				// Skipping this for now. As it turns out, in common use I'm finding that
+				// for Portico we want to hard-specify a location via the fallback. This
+				// lets us ensure htat things are consistent across platforms. For Ant to
+				// load up properly, JAVA_HOME must be set, so we should ALWAYS get a
+				// result from here, although we typically really want to fall through to
+				// the fallback so we can control what the reference points to. Better
+				// thought about the name/purpose of this task is needed.
+
+				/*
+				logVerbose( "Found JDK. Environment variable JAVA_HOME points to valid JDK." );
+				logVerbose( "  => Set property ["+property+"] to ["+envvar+"]" );
+				PropertyUtils.setProjectProperty( getProject(), property, envvar, false );
+				logLocated( envvar );
+				return;
+				*/
 			}
 		}
 		else
@@ -215,6 +236,7 @@ public class GetJdkTask extends Task
 				// if it is set, and it points to an appropriate JDK, we're all done
 				getProject().setNewProperty( property, fallback );
 				logVerbose( "JDK located using fallback location: "+fallback );
+				logLocated( fallback );
 				return;
 			}
 		}
@@ -295,8 +317,8 @@ public class GetJdkTask extends Task
 		}
 		else
 		{
-			log( "JDK architecture does not match that requested (found="+actualArchitecture+
-			     ", expected="+architecture+")", Project.MSG_ERR );
+			logVerbose( "JDK architecture does not match that requested (found="+
+			            actualArchitecture+", expected="+architecture+")" );
 			return false;
 		}			
 	}
@@ -391,6 +413,19 @@ public class GetJdkTask extends Task
 	public void logError( String message )
 	{
 		log( message, Project.MSG_ERR );
+	}
+
+	/**
+	 * Prints out a log message at INFO level to let the user know that the JDK they
+	 * requested has been located.
+	 */
+	public void logLocated( String location )
+	{
+		String archString = "(x86)  ";
+		if( architecture == Arch.amd64 )
+			archString = "(amd64)";
+
+		log( "Located JDK "+archString+": "+property+" = "+location );
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
