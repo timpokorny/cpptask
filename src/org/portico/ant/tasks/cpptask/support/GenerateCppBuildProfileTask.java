@@ -36,7 +36,7 @@ import org.apache.tools.ant.Task;
  * &lt;generateCppBuildProfile supportedCompilers="vc8,vc9,vc10,vc11" <-- defaults
  *                             supportedArchitectures="x86,amd64"     <-- defaults
  *                             supportedBuilds="debug,release"        <-- defaults
- *                             profileProperty="propName"&gt; <-- optional, default is cpp.profile
+ *                             profileProperty="propName"&gt; <-- optional, default is "profile"
  * </pre>
  * 
  * The tasks tasks a list of all the supported compilers, arches and build types. It can also
@@ -44,10 +44,10 @@ import org.apache.tools.ant.Task;
  * the command line. Given the default, the following examples execute the identified targets:
  * 
  * <ul>
- *   <li><code>./ant -Dcpp.profile=vc8 (all VC8)</code></li>
- *   <li><code>./ant -Dcpp.profile=vc8,debug (all VC8 debug tasks)</code></li>
- *   <li><code>./ant -Dcpp.profile=vc8,amd64 (all VC8 amd64 tasks)</code></li>
- *   <li><code>./ant -Dcpp.profile=vc8,debug,amd64 (the VC8 debug build for amd64)</code></li>
+ *   <li><code>./ant -Dprofile=vc8 (all VC8)</code></li>
+ *   <li><code>./ant -Dprofile=vc8,debug (all VC8 debug tasks)</code></li>
+ *   <li><code>./ant -Dprofile=vc8,amd64 (all VC8 amd64 tasks)</code></li>
+ *   <li><code>./ant -Dprofile=vc8,debug,amd64 (the VC8 debug build for amd64)</code></li>
  * </ul>
  * 
  * <p/>
@@ -56,7 +56,7 @@ import org.apache.tools.ant.Task;
  * The properties that are set follow a consistent scheme: [compiler].[arch].[build].
  * 
  * <p/>
- * So, for <code>-Dcpp.profile=vc8,vc9,debug</code> the properties that are set will be:
+ * So, for <code>-Dprofile="vc8,vc9,debug"</code> the properties that are set will be:
  * <ul>
  *   <li><code>vc8.x86.debug</code></li>
  *   <li><code>vc8.amd64.debug</code></li>
@@ -107,7 +107,7 @@ public class GenerateCppBuildProfileTask extends Task
 	public GenerateCppBuildProfileTask()
 	{
 		this.settings = new HashMap<String,Compiler>();
-		this.profileProperty = "cpp.profile";
+		this.profileProperty = "profile";
 
 		this.supportedCompilers = new HashSet<String>();
 		this.supportedCompilers.add( "vc8" );
