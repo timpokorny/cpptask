@@ -89,13 +89,13 @@ public class GetOsPlatformTask extends Task
 				break;
 			case linux32:
 				this.properties.put( "platform", "linux32" );
+				this.properties.put( "linux", "true" );
 				this.properties.put( "linux32", "true" );
-				this.properties.put( "platform", "linux32" );
 				break;
 			case linux64:
 				this.properties.put( "platform", "linux64" );
+				this.properties.put( "linux", "true" );
 				this.properties.put( "linux64", "true" );
-				this.properties.put( "platform", "linux64" );
 				break;
 		}
 		
