@@ -2,14 +2,15 @@
  *   Copyright 2013 The Portico Project
  *
  *   This file is part of cpptask.
- *
- *   cpptask is free software; you can redistribute it and/or modify
- *   it under the terms of the Common Developer and Distribution License (CDDL) 
- *   as published by Sun Microsystems. For more information see the LICENSE file.
+ * 
+ *   cpptask is free software; you can redistribute and/or modify it under the
+ *   terms of the Common Development and Distribution License (the "License").
+ *   You may not use this file except in compliance with the License.
  *
  *   Use of this software is strictly AT YOUR OWN RISK!!!
- *   If something bad happens you do not have permission to come crying to me.
- *   (that goes for your lawyer as well)
+ *   Obtain a copy of the License at http://opensource.org/licenses/CDDL-1.0
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
  *
  */
 package org.portico.ant.tasks.cpptask.gcc;
