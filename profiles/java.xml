@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+<!--
+             This project is using the Portico Build System
+ 
+      The Portico Build System is designed to support projects that
+      must build multiple artefacts or distributions from a single,
+      shared codebase. It is designed to be extended and allows all
+      logic for a particular artefact or distribution to be located
+      together to help make navigation of a large structure as easy
+      as possible. For full details, see the online documentation:
+
+             https://github.com/timpokorny/build-skeleton
+
+         File: profiles/java.xml
+      Purpose: The common java profile defining compile, test, jar
+               and sandbox tasks. As Java is cross platform, it is
+               possible to combine most of this work under a single
+               file. However, split it out into several smaller
+               distribution-specific files if you must.
+-->
+<project name="java">
+
+	<!-- ================================================================================= -->
+	<!--                                 General Settings                                  -->
+	<!-- ================================================================================= -->
+	<description>
+		Java build profile for main source modules
+	</description>
+
+	<!-- ==== Basic Properties ==== -->
+	<property name="java.src.dir"             location="${src.dir}/java"/>
+	<property name="java.build.dir"           location="${build.dir}/java"/>
+	<property name="resources.jars.dir"       location="${resources.dir}/jars"/>
+
+	<!-- ==== Source Related Properties ==== -->
+	<property name="cpptask.src.dir"          location="${java.src.dir}/cpptask"/>
+	<property name="cpptask.build.dir"        location="${java.build.dir}/cpptask"/>
+	<property name="cpptask.classes.dir"      location="${cpptask.build.dir}/classes"/>
+
+	<!-- ==== Test Related Properties ==== -->
+	<property name="test.src.dir"             location="${java.src.dir}/test"/>
+	<property name="test.build.dir"           location="${java.build.dir}/test"/>
+	<property name="test.classes.dir"         location="${test.build.dir}/classes"/>
+	<property name="test.reports.dir"         location="${test.build.dir}/reports"/>
+
+	<property name="test.loglevel"            value="OFF"/>
+	<property name="test.fileLogLevel"        value="OFF"/>
+
+	<!-- ==== Javadoc Related Properties ==== -->
+	<property name="javadoc.oracle"           value="http://docs.oracle.com/javase/7/docs/api/"/>
+	<property name="javadoc.copyright"        value="Copyright The Portico Project ${YEAR}."/>
+	<property name="javadoc.window"           value="${build.shortname} [${build.version} build] Javadoc"/>
+	<!-- defaults used by the macro -->
+	<property name="javadoc.windowtitle"      value="CppTask [${build.version} build]"/>
+	<property name="javadoc.header"           value="${javadoc.windowtitle}"/>
+	<property name="javadoc.footer"           value="${javadoc.windowtitle}"/>
+
+	<!-- =========================================================== -->
+	<!--                     Project Libraries                       -->
+	<!-- =========================================================== -->
+	<!-- ==== Library Path Definitions ==== -->
+	<!-- These properties are set so that any information relating to a specific path
+	     for a library can be changed in a single spot. The properties should be used
+	     when defining paths and the like later in the build file -->
+	<property name="testng.dir"            location="${lib.dir}/testng/testng-6.8"/>
+	<property name="antlib.dir"            location="${lib.dir}/apache-ant-1.8.4"/>
+
+	<!-- Classpaths for individual libraries -->
+	<path id="lib.testng.classpath">
+		<fileset dir="${testng.dir}" includes="**/*.jar"/>
+	</path>
+	
+	<path id="lib.ant.classpath">
+		<fileset dir="${antlib.dir}"  includes="**/*.jar"/>
+	</path>
+
+	<!-- ========================== -->
+	<!-- Classpath Set Declarations -->
+	<!-- ========================== -->
+	<path id="compile.classpath">
+		<path refid="lib.ant.classpath"/>
+	</path>
+	
+	<path id="test.classpath">
+		<path refid="compile.classpath"/>
+		<path refid="lib.testng.classpath"/>
+		<pathelement path="${cpptask.classes.dir}"/>
+		<pathelement path="${test.classes.dir}"/>
+		<pathelement path="${resources.dir}/jars/cpptask.jar"/>
+		<pathelement path="${resources.dir}/testdata"/>
+	</path>
+	
+	<!-- ================================================================================= -->
+	<!--                                   Clean Targets                                   -->
+	<!-- ================================================================================= -->
+	<target name="clean" extensionOf="master.clean">
+		<delete dir="${java.build.dir}"/>
+		<delete dir="logs"/>
+	</target>
+
+	<!-- ================================================================================= -->
+	<!--                                  Compile Targets                                  -->
+	<!-- ================================================================================= -->
+	<target name="compile" depends="compile.cpptask,compile.tests" extensionOf="master.compile"/>
+
+	<!-- compile the main production code -->	
+	<target name="compile.cpptask">
+		<java-compile srcdir="${cpptask.src.dir}"
+		              outdir="${cpptask.classes.dir}"
+		              classpath="compile.classpath"/>
+	</target>
+
+	<!-- compile the test suite code -->
+	<target name="compile.tests" depends="compile.cpptask">
+		<!--
+		<java-compile srcdir="${test.src.dir}"
+		              outdir="${test.classes.dir}"
+		              classpath="test.classpath"/>
+		-->
+	</target>
+
+	<!-- ================================================================================= -->
+	<!--                                  Testing Targets                                  -->
+	<!-- ================================================================================= -->
+	<!-- EXAMPLE: Remember to replace with your project-specific settings or remove -->	
+	<!-- Run the core Portico suite that tests various internal parts of the RTI -->
+	<!--
+	<target name="test" extensionOf="master.test" depends="compile.tests">
+		<java-test suite="org/portico"
+		           classdir="${test.classes.dir}"
+		           outdir="${test.reports.dir}"
+		           classpath="test.classpath">
+			<jvmarg value="-Dtest.loglevel=${test.loglevel}"/>
+			<jvmarg value="-Dtest.fileLogLevel=${test.fileLogLevel}"/>
+			<jvmarg value="-Dtest.root.dir=${test.root.dir}"/>
+	     </java-test>
+	</target>
+	-->
+
+	<!-- ================================================================================= -->
+	<!--                                  Sandbox Targets                                  -->
+	<!-- ================================================================================= -->
+	<!-- 
+	     The main sandbox preparation target. This will aggregate together all the various
+	     required artefacts scattered around the build environment into the structure that
+	     should be present when installed on a users system (relative to the sandbox dir).
+	-->
+	<target name="sandbox" extensionOf="master.sandbox" depends="compile,jar">
+		<!-- create the required directories -->
+		<mkdir dir="${dist.dir}"/>
+		<mkdir dir="${sandbox.dir}"/>
+
+		<!-- copy across the resources -->
+		<copy todir="${sandbox.dir}">
+			<fileset dir="${resources.dist.dir}/common" includes="**/*"/>
+		</copy>
+	</target>
+
+	<!-- ==================================== -->
+	<!--           Jar File Targets           -->
+	<!-- ==================================== -->
+	<target name="jar" depends="compile">
+		<jar destfile="${sandbox.dir}/cpptask.jar">
+			<fileset dir="${cpptask.classes.dir}" includes="**/*"/>
+			<fileset dir="${resources.jars.dir}/cpptask.jar" includes="**/*"/>
+			<manifest>
+				<attribute name="Built-By" value="The Portico Project"/>
+				<attribute name="Implementation-Title" value="CppTask"/>
+				<attribute name="Implementation-Version" value="${build.version} (build ${build.number}) ${TODAY}"/>
+				<attribute name="Implementation-Vendor" value="The Portico Project"/>
+			</manifest>
+		</jar>
+	</target>
+
+	<!-- ================================================================================= -->
+	<!--                             Release Generation Targets                            -->
+	<!-- ================================================================================= -->
+	<!-- 
+	     The parent release target. This will run a clean and then compile all code, run all
+	     tests, generate a sandbox and place all additional release artefacts (such as javadoc)
+	     in with it in preparation for release.
+	-->
+	<target name="release" extensionOf="master.release" depends="clean,test,sandbox"/>
+
+</project>
+
