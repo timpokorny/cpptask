@@ -59,6 +59,19 @@
 	<property name="dist.name"              value="${build.shortname}-${build.version}"/>
 	<echo>Build Version: ${build.shortname}-${build.version} (build ${build.number})</echo>
 
+	<!-- Platform Determination Properties -->
+	<!-- These tasks will initialize a bunch of properties based
+	     on the system that the build is currently running on. The
+	     various properties and values set are:
+	       * ${platform}         : One of "macosx, win32, win64, linux32, linux64"
+	       * ${platform.macosx}  : "true" if we are running on Mac OS X
+	       * ${platform.win32}   : "true" if we are running on 32-bit Windows
+	       * ${platform.win64}   : "true" if we are running on 64-bit Windows
+	       * ${platform.linux32} : "true" if we are running on 32-bit Linux
+	       * ${platform.linux64} : "true" if we are running on 64-bit Linux
+	-->
+	<platform/>
+
 	<!-- =========================================================== -->
 	<!--          Locations, Resources and Build Directories         -->
 	<!-- =========================================================== -->

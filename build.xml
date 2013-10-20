@@ -29,6 +29,9 @@
 
 	<!-- bring in the ant-contrib tasks -->
 	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!-- bring in our customer ant build tasks - for the build that builds them :O How meta. -->
+	<taskdef resource="cpptaskdef.properties"/>
+	<typedef resource="cpptypedef.properties"/>
 
 	<!-- =========================================================== -->
 	<!--               System Properties and Utilities               -->
