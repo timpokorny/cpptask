@@ -63,6 +63,7 @@ import org.portico.ant.tasks.utils.PropertyUtils;
  *   <li><b>fallback</b>: (optional) location to use as last resort - maybe a platform default</li>
  * </ul>
  */
+@Deprecated
 public class GetJdkTask extends Task
 {
 	//----------------------------------------------------------
