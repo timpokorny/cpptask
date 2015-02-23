@@ -207,56 +207,72 @@ public class Utilities
 		File outputDirectory = configuration.getOutputDirectory();
 		String outputName = configuration.getOutputName();
 		
-		///////////////////////////////////////////
-		///////////// Executable File /////////////
-		///////////////////////////////////////////
 		// if this is an executable file, and we're on windows, make sure .exe is on the end
 		if( configuration.getOutputType() == OutputType.EXECUTABLE )
 		{
+			///////////////////////////////////////////
+			///////////// Executable File /////////////
+			///////////////////////////////////////////
 			// if we're not in windows, do nothing
-			if( Platform.getOsPlatform().isWindows() == false )
-				return new File( outputDirectory, outputName );
-			
-			// does the output file have .exe on the end?
-			if( configuration.getOutputName().endsWith(".exe") == false )
+			// if we are windows, put a .exe on the end
+			if( Platform.getOsPlatform().isWindows() )
 			{
-				File newFile = new File( outputDirectory, outputName+".exe" );
-				configuration.setOutputName( outputName+".exe" );
-				return newFile;
+				// does the output file have .exe on the end?
+				if( configuration.getOutputName().endsWith(".exe") == false )
+					outputName += ".exe";
+			}
+		}
+		else if( configuration.getOutputType() == OutputType.SHARED )
+		{
+			////////////////////////////////////////////
+			////////////// Shared Library //////////////
+			////////////////////////////////////////////
+			// it's a shared library, do the checks
+			if( Platform.getOsPlatform().isWindows() )
+			{
+				if( outputName.endsWith(".dll") == false )
+					outputName += ".dll";
+			}
+			else if( Platform.getOsPlatform().isMac() )
+			{
+				// put a "lib" on the front
+				if( outputName.startsWith("lib") == false )
+					outputName = "lib" + outputName;
+				
+				// check for .dylib
+				if( outputName.endsWith(".dylib") == false )
+					outputName += ".dylib";
 			}
 			else
 			{
-				return new File( outputDirectory, outputName );
+				// put a "lib" on the front
+				if( outputName.startsWith("lib") == false )
+					outputName = "lib" + outputName;
+				
+				if( outputName.endsWith(".so") == false ) 
+					outputName += ".so";
 			}
 		}
-
-		//////////////////////////////////////////
-		////////////// Library File //////////////
-		//////////////////////////////////////////
-		// it's a shared library, do the checks
-		if( Platform.getOsPlatform().isWindows() )
+		else if( configuration.getOutputType() == OutputType.STATIC )
 		{
-			if( outputName.endsWith(".dll") == false )
-				outputName += ".dll";
-		}
-		else if( Platform.getOsPlatform().isMac() )
-		{
-			// put a "lib" on the front
-			if( outputName.startsWith("lib") == false )
-				outputName = "lib" + outputName;
-			
-			// check for .dylib
-			if( outputName.endsWith(".dylib") == false )
-				outputName += ".dylib";
-		}
-		else
-		{
-			// put a "lib" on the front
-			if( outputName.startsWith("lib") == false )
-				outputName = "lib" + outputName;
-			
-			if( outputName.endsWith(".so") == false ) 
-				outputName += ".so";
+			////////////////////////////////////////////
+			////////////// Static Library //////////////
+			////////////////////////////////////////////
+			if( Platform.getOsPlatform().isWindows() )
+			{
+				if( outputName.endsWith(".lib") == false )
+					outputName += ".lib";
+			}
+			else
+			{
+				// put a "lib" on the front
+				if( outputName.startsWith("lib") == false )
+					outputName = "lib" + outputName;
+				
+				// check for .dylib
+				if( outputName.endsWith(".a") == false )
+					outputName += ".a";
+			}
 		}
 
 		File newFile = new File( outputDirectory, outputName );

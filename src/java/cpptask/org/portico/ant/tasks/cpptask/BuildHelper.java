@@ -271,6 +271,27 @@ public class BuildHelper
 					outputName += ".so";
 			}
 		}
+		else if( configuration.getOutputType() == OutputType.STATIC )
+		{
+			////////////////////////////////////////////
+			////////////// Static Library //////////////
+			////////////////////////////////////////////
+			if( Platform.getOsPlatform().isWindows() )
+			{
+				if( outputName.endsWith(".lib") == false )
+					outputName += ".lib";
+			}
+			else
+			{
+				// put a "lib" on the front
+				if( outputName.startsWith("lib") == false )
+					outputName = "lib" + outputName;
+				
+				// check for .dylib
+				if( outputName.endsWith(".a") == false )
+					outputName += ".a";
+			}
+		}
 
 		// create a new File object from the information and return it
 		return new File( configuration.getOutputDirectory(), outputName );

@@ -293,6 +293,11 @@ public class CompilerGCC implements Compiler
 	 */
 	private Commandline generateLinkCommand()
 	{
+		// Creating a static library in gcc/clang uses ar instead of ld via gcc.
+		// The command line for ar is different, it has been delegated into its own function
+		if( configuration.getOutputType() == OutputType.STATIC )
+			return generateStaticLinkCommand();
+		
 		// create the command line in which to store the information
 		Commandline commandline = new Commandline();
 		commandline.setExecutable( executable );
@@ -326,6 +331,7 @@ public class CompilerGCC implements Compiler
 				commandline.createArgument().setValue( "-shared" );
 			}
 		}
+		
 
 		////// platform architecture //////
 		appendCompilerArchitecture( commandline );
@@ -348,6 +354,36 @@ public class CompilerGCC implements Compiler
 				for( String temp : library.getLibs() )
 					commandline.createArgument().setLine( "-l" + temp );
 			}
+		}
+
+		/////// additional args ///////
+		String[] commands = Commandline.translateCommandline( configuration.getLinkerArgs() );
+		commandline.addArguments( commands );
+
+		// return the finished product!
+		return commandline;
+	}
+	
+	private Commandline generateStaticLinkCommand()
+	{
+		// gcc/clang create static libraries through the "ar" utility 
+		Commandline commandline = new Commandline();
+		commandline.setExecutable( "ar" );
+		
+		// r=Replace, c=Create, s=Write Index
+		commandline.createArgument().setValue( "rcs" );
+		
+		/////// output file name ///////
+		File outputFile = helper.getPlatformSpecificOutputFile();
+		commandline.createArgument().setFile( outputFile );
+		
+		////////////////////////////////////
+		/////// object files to link ///////
+		////////////////////////////////////
+		File objectDirectory = configuration.getObjectDirectory();
+		for( File ofile : helper.getFilesThatNeedLinking(objectDirectory) )
+		{
+			commandline.createArgument().setFile( ofile );
 		}
 
 		/////// additional args ///////

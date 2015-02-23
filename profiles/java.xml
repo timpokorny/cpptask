@@ -151,7 +151,7 @@
 		<mkdir dir="${sandbox.dir}"/>
 
 		<!-- copy across the resources -->
-		<copy todir="${sandbox.dir}">
+		<copy todir="${sandbox.dir}" failonerror="false">
 			<fileset dir="${resources.dist.dir}/common" includes="**/*"/>
 		</copy>
 	</target>

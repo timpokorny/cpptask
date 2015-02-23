@@ -18,5 +18,6 @@ package org.portico.ant.tasks.cpptask;
 public enum OutputType
 {
 	EXECUTABLE,
-	SHARED;
+	SHARED,
+	STATIC;
 }

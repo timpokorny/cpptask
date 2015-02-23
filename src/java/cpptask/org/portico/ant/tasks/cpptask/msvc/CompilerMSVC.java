@@ -539,7 +539,11 @@ public class CompilerMSVC implements Compiler
 	{
 		// create the command line in which to store the information
 		Commandline commandline = new Commandline();
-		commandline.setExecutable( "link" );
+		
+		if( configuration.getOutputType() == OutputType.STATIC )
+			commandline.setExecutable( "lib" );
+		else
+			commandline.setExecutable( "link" );
 		
 		// moved most of these to generateLinkCommandOptions
 		return commandline;
@@ -553,8 +557,18 @@ public class CompilerMSVC implements Compiler
 	{
 		ArrayList<String> commands = new ArrayList<String>();
 		
+		if( configuration.getOutputType() == OutputType.STATIC )
+		{
+			commands.add( "/NOLOGO" );
+			commands.add( "/OUT:" + helper.getPlatformSpecificOutputFile() );
+			
+			return commands;
+		}
+		
+		
 		/////// output options ///////
 		commands.add( "/NOLOGO" );
+		
 		commands.add( "/SUBSYSTEM:CONSOLE" );
 		//commands.add( "/INCREMENTAL:NO" );
 		
