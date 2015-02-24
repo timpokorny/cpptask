@@ -12,8 +12,8 @@
 /.settings/org.eclipse.wst.validation.prefs
 
 # /codebase/
-local.properties
-build
-logs
-dist
+/local.properties
+/build
+/logs
+/dist
 
