@@ -32,7 +32,8 @@ public enum CompilerType
 	VC8,
 	VC9,
 	VC10,
-	VC11;
+	VC11,
+	VC12;
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
@@ -74,6 +75,8 @@ public enum CompilerType
 				return new CompilerMSVC( Version.vc10 );
 			case VC11:
 				return new CompilerMSVC( Version.vc11 );
+			case VC12:
+				return new CompilerMSVC( Version.vc12 );
 			default:
 				throw new BuildException( "unsupported compiler type: " + type );
 		}
@@ -99,6 +102,8 @@ public enum CompilerType
 			return CompilerType.VC10;
 		else if( string.equalsIgnoreCase("vc11") )
 			return CompilerType.VC11;
+		else if( string.equalsIgnoreCase("vc12") )
+			return CompilerType.VC12;
 		else
 			throw new BuildException( "Unknown compiler type: " + string );
 	}

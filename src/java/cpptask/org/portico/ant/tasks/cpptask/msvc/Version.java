@@ -34,7 +34,8 @@ public enum Version
 	vc8("VS80COMNTOOLS", "Visual Studio 2005"),
 	vc9("VS90COMNTOOLS", "Visual Studio 2008"),
 	vc10("VS100COMNTOOLS", "Visual Studio 2010"),
-	vc11("VS110COMNTOOLS", "Visual Studio 2012");
+	vc11("VS110COMNTOOLS", "Visual Studio 2012"),
+	vc12("VS120COMNTOOLS", "Visual Studio 2013");
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
