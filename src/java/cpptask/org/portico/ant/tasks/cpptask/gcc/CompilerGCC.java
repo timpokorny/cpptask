@@ -17,6 +17,9 @@ package org.portico.ant.tasks.cpptask.gcc;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -100,62 +103,29 @@ public class CompilerGCC implements Compiler
 		File[] filesToCompile = helper.getFilesThatNeedCompiling( objectDirectory );
 		task.log( "" + filesToCompile.length + " files to be compiled." );
 
-		// do the compilation
+		// Do the compile
+		// We have to support parallel builds by ourselves, so we throw all tasks into a
+		// queue and process with a thread pool executor
+		ThreadPoolExecutor executor = new ThreadPoolExecutor( configuration.getThreadCount(),
+		                                                      configuration.getThreadCount(),
+		                                                      3000,
+		                                                      TimeUnit.SECONDS,
+		                                                      new LinkedBlockingQueue<Runnable>() );
+
+		// create a runnable task for the compilation of each file and submit it
 		for( File sourceFile : filesToCompile )
+			executor.submit( new CompileTask(sourceFile,objectDirectory,command) );
+
+		// run the executor over the queue
+		executor.shutdown();
+		while( executor.isShutdown() == false )
 		{
-			Commandline theCommand;
-			// get the name of the output file
-			File ofile = helper.getOFile( objectDirectory, sourceFile );
-			if( sourceFile.getName().endsWith(".rc") )
-			{	
-				// Is this a win32 resource file?
-				// create the full command
-				theCommand = new Commandline();
-				theCommand.setExecutable( "windres" );
-				theCommand.createArgument().setValue( "-i" );
-				theCommand.createArgument().setFile( sourceFile );
-				theCommand.createArgument().setValue( "-J" );
-				theCommand.createArgument().setValue( "rc" );
-				theCommand.createArgument().setValue( "-o" );
-				theCommand.createArgument().setFile( ofile );
-				theCommand.createArgument().setValue( "-O" );
-				theCommand.createArgument().setValue( "coff" );
-			}
-			else
-			{
-				// create the full command
-				theCommand = (Commandline)command.clone();
-				theCommand.createArgument().setFile( sourceFile );
-				theCommand.createArgument().setValue( "-o" );
-				theCommand.createArgument().setFile( ofile );
-			}
-
-			// create the execution object
-			Execute runner = new Execute( new LogStreamHandler( configuration.getTask(),
-			                                                    Project.MSG_INFO,
-			                                                    Project.MSG_WARN) );
-			
-			//runner.setAntRun( project );
-			runner.setCommandline( theCommand.getCommandline() );
-
-			// run the command
 			try
 			{
-				task.log( "  " + sourceFile.getName() );
-				task.log( theCommand.toString(), Project.MSG_DEBUG );
-				int exitValue = runner.execute();
-				if( exitValue != 0 )
-				{
-					throw new BuildException( "Compile Failed, (exit value: " + exitValue + ")" );
-				}
+				executor.awaitTermination( 500, TimeUnit.MILLISECONDS );
 			}
-			catch( IOException e )
-			{
-				String msg = "There was a problem running the compiler, this usually occurs when " + 
-				             "it can't be found, make sure it is on your path. full error: " +
-				             e.getMessage();
-				throw new BuildException( msg, e );
-			}
+			catch( InterruptedException ie )
+			{ /* just carry on */ }
 		}
 		
 		task.log( "Compile complete" );
@@ -402,6 +372,81 @@ public class CompilerGCC implements Compiler
 		task.log( message, Project.MSG_DEBUG );
 	}
 
+	//////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////// Private Inner Class: CompileTask ////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////
+	private class CompileTask implements Runnable
+	{
+		private File sourceFile;
+		private File objectDirectory;
+		private Commandline command;
+
+		public CompileTask( File sourceFile, File objectDirectory, Commandline command )
+		{
+			this.sourceFile = sourceFile;
+			this.objectDirectory = objectDirectory;
+			this.command = command;
+		}
+		
+		public void run()
+		{
+			Commandline theCommand;
+			// get the name of the output file
+			File ofile = helper.getOFile( objectDirectory, sourceFile );
+			if( sourceFile.getName().endsWith(".rc") )
+			{	
+				// Is this a win32 resource file?
+				// create the full command
+				theCommand = new Commandline();
+				theCommand.setExecutable( "windres" );
+				theCommand.createArgument().setValue( "-i" );
+				theCommand.createArgument().setFile( sourceFile );
+				theCommand.createArgument().setValue( "-J" );
+				theCommand.createArgument().setValue( "rc" );
+				theCommand.createArgument().setValue( "-o" );
+				theCommand.createArgument().setFile( ofile );
+				theCommand.createArgument().setValue( "-O" );
+				theCommand.createArgument().setValue( "coff" );
+			}
+			else
+			{
+				// create the full command
+				theCommand = (Commandline)command.clone();
+				theCommand.createArgument().setFile( sourceFile );
+				theCommand.createArgument().setValue( "-o" );
+				theCommand.createArgument().setFile( ofile );
+			}
+
+			// create the execution object
+			Execute runner = new Execute( new LogStreamHandler( configuration.getTask(),
+			                                                    Project.MSG_INFO,
+			                                                    Project.MSG_WARN) );
+			
+			//runner.setAntRun( project );
+			runner.setCommandline( theCommand.getCommandline() );
+
+			// run the command
+			try
+			{
+				task.log( "  " + sourceFile.getName() );
+				task.log( theCommand.toString(), Project.MSG_DEBUG );
+				int exitValue = runner.execute();
+				if( exitValue != 0 )
+				{
+					throw new BuildException( "Compile Failed, (exit value: " + exitValue + ")" );
+				}
+			}
+			catch( IOException e )
+			{
+				String msg = "There was a problem running the compiler, this usually occurs when " + 
+				             "it can't be found, make sure it is on your path. full error: " +
+				             e.getMessage();
+				throw new BuildException( msg, e );
+			}
+		}
+	}
+
+	
 	//----------------------------------------------------------
 	//                     STATIC METHODS
 	//----------------------------------------------------------
