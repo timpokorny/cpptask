@@ -226,6 +226,13 @@ public class CompilerMSVC implements Compiler
 		for( String command : commands )
 			options.add( command );
 		
+		// add the /MP command if we are told to
+		if( configuration.getThreadCount() > 1 )
+		{
+			options.add( "/MP"+configuration.getThreadCount() );
+			task.log( "Parallel compile enabled with "+configuration.getThreadCount()+" threads" );
+		}
+
 		////// includes //////
 		for( IncludePath path : configuration.getIncludePaths() )
 		{

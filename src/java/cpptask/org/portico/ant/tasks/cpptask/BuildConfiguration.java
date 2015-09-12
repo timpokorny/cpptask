@@ -61,6 +61,7 @@ public class BuildConfiguration
 	private String preCommand;
 	private boolean failOnError;
 	private boolean incremental;
+	private int threadCount; 
 
 	// Collection properties
 	private List<FileSet> sourceFiles;
@@ -94,6 +95,7 @@ public class BuildConfiguration
 		this.preCommand = "";
 		this.incremental = true;
 		this.failOnError = true;
+		this.threadCount = 1;
 
 		// child types
 		this.sourceFiles  = new ArrayList<FileSet>();
@@ -236,6 +238,38 @@ public class BuildConfiguration
 		return this.outputArch;
 	}
 	
+	/**
+	 * Set the number of threads that should be used for a parallel build. If set to "auto" it
+	 * will use the same number of threads as the system has cores.
+	 */
+	public void setThreadCount( String threadString )
+	{
+		threadString = threadString.toLowerCase();
+		int systemProcessors = Runtime.getRuntime().availableProcessors();
+		if( threadString.equals("auto") )
+		{
+			this.threadCount = systemProcessors;
+		}
+		else 
+		{
+			int count = Integer.parseInt( threadString );
+			if( count > systemProcessors )
+				count = systemProcessors;
+			
+			this.threadCount = count;
+		}
+	}
+
+	/**
+	 * Returns the number of threads to use in any parallel builds. Defaults to 1. If set to
+	 * "auto", it will use the number of CPUs available to the system.
+	 * @return
+	 */
+	public int getThreadCount()
+	{
+		return this.threadCount;
+	}
+
 	///////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////// Compiler Properties /////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////

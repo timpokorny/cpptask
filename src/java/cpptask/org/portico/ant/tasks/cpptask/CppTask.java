@@ -40,6 +40,8 @@ import org.portico.ant.tasks.utils.Arch;
  *           preCommand=""      // Command to run before the compile and link commands
  *           incremental=""     // Use incremental compilation and linking? (defaults to true)
  *           failOnError=""     // Fail the build on an error (defaults to true)
+ *           threadCount=""     // Specify number of threads to use for parallel build (default: 1)
+ *                              // If value is "auto", count will be number of CPUs in the system
  *  >
  *      <fileset...>                // fileset that contains source code
  *      <includepath path=""/>      // paths for include files (can have many)
@@ -256,6 +258,16 @@ public class CppTask extends Task
 		configuration.setLinkerArgs( args );
 	}
 
+	/**
+	 * Set the number of threads to use when doing a build. This is just passed through to
+	 * the compiler which must support it. If set to "auto", the number will be the same as
+	 * the CPU count in the system.
+	 */
+	public void setThreadCount( String args )
+	{
+		configuration.setThreadCount( args );
+	}
+	
 	/////////////////////////////
 	///// Runtime Arguments /////
 	/////////////////////////////

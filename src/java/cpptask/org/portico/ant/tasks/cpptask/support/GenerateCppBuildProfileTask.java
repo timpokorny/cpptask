@@ -34,10 +34,10 @@ import org.apache.tools.ant.Task;
  * <h3>Usage:</h3>
  * <p/>
  * <pre>
- * &lt;generateCppBuildProfile supportedCompilers="vc8,vc9,vc10,vc11" <-- defaults
- *                             supportedArchitectures="x86,amd64"     <-- defaults
- *                             supportedBuilds="debug,release"        <-- defaults
- *                             profileProperty="propName"&gt; <-- optional, default is "profile"
+ * &lt;generateCppBuildProfile compilers="vc8,vc9,vc10,vc11,vc12, vc13" <-- defaults
+ *                             architectures="x86,amd64"     <-- defaults
+ *                             builds="debug,release"        <-- defaults
+ *                             property="propName"&gt;       <-- optional, default is "profile"
  * </pre>
  * 
  * The tasks tasks a list of all the supported compilers, arches and build types. It can also
@@ -79,7 +79,7 @@ import org.apache.tools.ant.Task;
  * supported compiler, architecture and build sets. You can override these values by setting
  * them directly on the target when you invoke it. The default settings are:
  * <ul>
- *   <li>Compilers: vc8, vc9, vc10, vc11</li>
+ *   <li>Compilers: vc8, vc9, vc10, vc11, vc12, vc13</li>
  *   <li>Architectures: x86, amd64</li>
  *   <li>Builds: debug, release</li>
  * </ul>
@@ -97,7 +97,7 @@ public class GenerateCppBuildProfileTask extends Task
 	private HashMap<String,Compiler> settings; // where we put the build up profile
 	
 	// values set on the task by the user
-	private String profileProperty;
+	private String profileProperty; // set to "profile" by default - not modifiable currently 
 	private Set<String> supportedCompilers;
 	private Set<String> supportedArchitectures;
 	private Set<String> supportedBuilds;
@@ -115,6 +115,8 @@ public class GenerateCppBuildProfileTask extends Task
 		this.supportedCompilers.add( "vc9" );
 		this.supportedCompilers.add( "vc10" );
 		this.supportedCompilers.add( "vc11" );
+		this.supportedCompilers.add( "vc12" );
+		this.supportedCompilers.add( "vc13" );
 		
 		this.supportedArchitectures = new HashSet<String>();
 		this.supportedArchitectures.add( "x86" );
@@ -256,7 +258,7 @@ public class GenerateCppBuildProfileTask extends Task
 		log( message, Project.MSG_VERBOSE );
 	}
 	
-	private void setProperty( String name )
+	private void setBuildProperty( String name )
 	{
 		logVerbose( " [enabled] "+name );
 		getProject().setProperty( name, "true" );
@@ -275,19 +277,19 @@ public class GenerateCppBuildProfileTask extends Task
 	////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Accessor and Mutator Methods ///////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////
-	public void setSupportedCompilers( String compilers )
+	public void setCompilers( String compilers )
 	{
 		this.supportedCompilers.clear(); // remove the defaults
 		this.supportedCompilers.addAll( explode(compilers) );
 	}
 	
-	public void setSupportedArchitectures( String architectures )
+	public void setArchitectures( String architectures )
 	{
 		this.supportedArchitectures.clear(); // remove the defaults
 		this.supportedArchitectures.addAll( explode(architectures) );
 	}
 	
-	public void setSupportedBuilds( String builds )
+	public void setBuilds( String builds )
 	{
 		this.supportedBuilds.clear(); // remove the defaults
 		this.supportedBuilds.addAll( explode(builds) );
@@ -302,9 +304,9 @@ public class GenerateCppBuildProfileTask extends Task
 	public static void main( String[] args )
 	{
 		GenerateCppBuildProfileTask task = new GenerateCppBuildProfileTask();
-		task.setSupportedCompilers( "vc8,vc9,vc10" );
-		task.setSupportedArchitectures( "x86,amd64" );
-		task.setSupportedBuilds( "debug,release" );
+		task.setCompilers( "vc8,vc9,vc10,vc11,vc12,vc13" );
+		task.setArchitectures( "x86,amd64" );
+		task.setBuilds( "debug,release" );
 
 		String profile = "";
 		//String profile = "vc8";
@@ -345,7 +347,7 @@ public class GenerateCppBuildProfileTask extends Task
 			{
 				for( String setBuild : build )
 				{
-					setProperty( compilerName+"."+setArch+"."+setBuild );
+					setBuildProperty( compilerName+"."+setArch+"."+setBuild );
 				}
 			}
 		}
