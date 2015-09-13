@@ -17,8 +17,8 @@ package org.portico.ant.tasks.cpptask.gcc;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.tools.ant.BuildException;
@@ -104,21 +104,17 @@ public class CompilerGCC implements Compiler
 		task.log( "" + filesToCompile.length + " files to be compiled." );
 
 		// Do the compile
-		// We have to support parallel builds by ourselves, so we throw all tasks into a
-		// queue and process with a thread pool executor
-		ThreadPoolExecutor executor = new ThreadPoolExecutor( configuration.getThreadCount(),
-		                                                      configuration.getThreadCount(),
-		                                                      3000,
-		                                                      TimeUnit.SECONDS,
-		                                                      new LinkedBlockingQueue<Runnable>() );
-
+		// We have to support parallel builds by ourselves, so we throw a bunch of compile tasks
+		// into a queue and process with an executor and then wait for them all to finish
+		ExecutorService executor = Executors.newFixedThreadPool( configuration.getThreadCount() );
+		
 		// create a runnable task for the compilation of each file and submit it
 		for( File sourceFile : filesToCompile )
 			executor.submit( new CompileTask(sourceFile,objectDirectory,command) );
 
 		// run the executor over the queue
 		executor.shutdown();
-		while( executor.isShutdown() == false )
+		while( executor.isTerminated() == false )
 		{
 			try
 			{
