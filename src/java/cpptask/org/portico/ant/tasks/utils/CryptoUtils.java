@@ -38,10 +38,6 @@ public class CryptoUtils
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
 
-	////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////// Accessor and Mutator Methods ///////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////
-
 	//----------------------------------------------------------
 	//                     STATIC METHODS
 	//----------------------------------------------------------
@@ -52,8 +48,7 @@ public class CryptoUtils
 	 * @param is Input stream to convert.
 	 * @return Byte array representation of the input stream.
 	 */
-	public static byte[] toByteArray( InputStream is )
-		throws IOException
+	public static byte[] toByteArray( InputStream is ) throws IOException
 	{
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		int read;
@@ -72,14 +67,14 @@ public class CryptoUtils
 	 * @param is Input stream to pipe from.
 	 * @param os Output stream to pipe to.
 	 */
-	public static void pipe( InputStream is, OutputStream os )
-		throws IOException
+	public static void pipe( InputStream is, OutputStream os ) throws IOException
 	{
 		int read;
 		byte[] data = new byte[16384];
-		while ( (read = is.read(data)) != -1 )
+		while( (read = is.read(data)) != -1 )
 		{
 			os.write( data, 0, read );
+			os.flush();
 		}
 	}
 	

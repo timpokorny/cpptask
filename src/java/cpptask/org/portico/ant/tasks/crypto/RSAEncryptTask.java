@@ -15,11 +15,13 @@
  */
 package org.portico.ant.tasks.crypto;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -40,7 +42,7 @@ import org.portico.ant.tasks.utils.CryptoUtils;
  * <p/>
  * Example:
  * <pre>
- *   <rsa-encrypt keyfile="private.der" srcfile="file" destfile="file.encrypted"/>
+ *   &lt;rsa-encrypt keyfile="private.der" srcfile="file" destfile="file.encrypted"/&gt;
  * </pre>
  * <p/>
  * Sample Key Pair Generation with OpenSSL:
@@ -59,7 +61,6 @@ public class RSAEncryptTask extends Task
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
-
 	private File destFile;
 	private File keyFile;
 	private File srcFile;
@@ -77,25 +78,36 @@ public class RSAEncryptTask extends Task
 	 */
 	public void execute() throws BuildException
 	{
+		// check to make sure everything that needs to be set has been set
 		if( destFile == null )
 			throw new BuildException( "Expected the 'destfile' attribute" );
 		if( keyFile == null )
 			throw new BuildException( "Expected the 'keyfile' attribute" );
 		if( srcFile == null )
 			throw new BuildException( "Expected the 'srcfile' attribute" );
-		try
+
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try( FileInputStream srcStream = new FileInputStream(srcFile) )
 		{
 			Cipher pkCipher = loadCipher( keyFile );
-			InputStream srcStream = new FileInputStream( srcFile );
-			CipherOutputStream destStream =
-				new CipherOutputStream( new FileOutputStream(destFile), pkCipher );
+			CipherOutputStream destStream = new CipherOutputStream( baos, pkCipher );
 			CryptoUtils.pipe( srcStream, destStream );
-			srcStream.close();
+			destStream.flush();
 			destStream.close();
 		}
 		catch( Exception e )
 		{
 			throw new BuildException( "Failed to encrypt: " + e.getMessage(), e );
+		}
+		
+		// write the contents to file
+		try
+		{
+			Files.write( destFile.toPath(), baos.toByteArray(), StandardOpenOption.DSYNC );
+		}
+		catch( IOException ioex )
+		{
+			throw new BuildException( "Poo: "+ioex.getMessage(), ioex );
 		}
 	}
 	
