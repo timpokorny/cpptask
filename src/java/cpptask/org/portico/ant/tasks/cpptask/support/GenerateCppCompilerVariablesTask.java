@@ -1,5 +1,5 @@
 /*
- *   Copyright 2013 The Portico Project
+ *   Copyright 2016 The Portico Project
  *
  *   This file is part of cpptask.
  * 
@@ -24,31 +24,45 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 
 /**
- * This task takes in a property that specifies a particular profile to build. The profile
- * is just a comma separated string of compilers, architectures and build types to build.
- * The tasks processsed that information and then sets project properties based on what it
- * finds. These properties can then be used in the "if" attributes of the associated tasks
- * to control whether they execute or not.
+ * This task takes an Ant property that details the specifics of the compiler combinations
+ * we want to build our C++ app with. This profile is a comma-separated string containing
+ * symbolic names for compilers, architectures and build types (release/debug).
  * 
+ * From this profile, the information is processed and the particular combinations of compiler,
+ * release type and arch are inferred. Based on this information, certain Ant properties are
+ * set. For each combination we believe is valid, a property in the form: `compiler.arch.type`
+ * is created (for example, <code>vc8.x86.debug</code>).
+ * 
+ * Later on, these properties can be used with the "if" attribute to conditionally execute
+ * tasks or not related to each of the specific compiler flag combinations.
+ * 
+ * The process of inferring which combinations are valid based on the input works by assuming
+ * that for each of `compilers`, `architectures` and `builds`, if no values are specified then
+ * properties are generated for all valid values. For example, specifying <code>vc10</code>
+ * will cause ONLY the vc10 combinations to have attributes set. Omitting any mention will cause
+ * all the specified compiler combinations to have attributes generated for them.
  * <p/>
  * <h3>Usage:</h3>
  * <p/>
  * <pre>
- * &lt;generateCppBuildProfile compilers="vc8,vc9,vc10,vc11,vc12, vc13" <-- defaults
- *                             architectures="x86,amd64"     <-- defaults
- *                             builds="debug,release"        <-- defaults
- *                             property="propName"&gt;       <-- optional, default is "profile"
+ * &lt;generateCppCompilerVariables compilers="vc8,vc9,vc10,vc11,vc12,vc14" <-- defaults
+ *                                  architectures="x86,amd64"     <-- defaults
+ *                                  builds="debug,release"        <-- defaults
+ *                                  property="propName"&gt;       <-- optional, default is "compilers"
  * </pre>
  * 
- * The tasks tasks a list of all the supported compilers, arches and build types. It can also
- * take the project property containing the build profile. Typically, this will be passed in on
- * the command line. Given the default, the following examples execute the identified targets:
+ * To specify, you must create a variable at some point before execution with the name specified
+ * in <code>property</code>. If not, <code>compilers</code> will be used. The typical way to
+ * specify this information is via system variable at Ant startup (<code>./ant -Dcompilers=...</code>).
+ * 
+ * On the task itself, you can specify the range of valid values via the compilers, architecutres
+ * and builds properties.
  * 
  * <ul>
- *   <li><code>./ant -Dprofile=vc8 (all VC8)</code></li>
- *   <li><code>./ant -Dprofile=vc8,debug (all VC8 debug tasks)</code></li>
- *   <li><code>./ant -Dprofile=vc8,amd64 (all VC8 amd64 tasks)</code></li>
- *   <li><code>./ant -Dprofile=vc8,debug,amd64 (the VC8 debug build for amd64)</code></li>
+ *   <li><code>./ant -Dcompilers=vc8 (all VC8)</code></li>
+ *   <li><code>./ant -Dcompilers=vc8,debug (all VC8 debug tasks)</code></li>
+ *   <li><code>./ant -Dcompilers=vc8,amd64 (all VC8 amd64 tasks)</code></li>
+ *   <li><code>./ant -Dcompilers=vc8,debug,amd64 (the VC8 debug build for amd64)</code></li>
  * </ul>
  * 
  * <p/>
@@ -57,7 +71,7 @@ import org.apache.tools.ant.Task;
  * The properties that are set follow a consistent scheme: [compiler].[arch].[build].
  * 
  * <p/>
- * So, for <code>-Dprofile="vc8,vc9,debug"</code> the properties that are set will be:
+ * So, for <code>-Dcompilers="vc8,vc9,debug"</code> the properties that are set will be:
  * <ul>
  *   <li><code>vc8.x86.debug</code></li>
  *   <li><code>vc8.amd64.debug</code></li>
@@ -85,7 +99,7 @@ import org.apache.tools.ant.Task;
  * </ul>
  * 
  */
-public class GenerateCppBuildProfileTask extends Task
+public class GenerateCppCompilerVariablesTask extends Task
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -97,7 +111,7 @@ public class GenerateCppBuildProfileTask extends Task
 	private HashMap<String,Compiler> settings; // where we put the build up profile
 	
 	// values set on the task by the user
-	private String profileProperty; // set to "profile" by default - not modifiable currently 
+	private String compilersProperty; // set to "compilers" by default - not modifiable currently 
 	private Set<String> supportedCompilers;
 	private Set<String> supportedArchitectures;
 	private Set<String> supportedBuilds;
@@ -105,10 +119,10 @@ public class GenerateCppBuildProfileTask extends Task
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
-	public GenerateCppBuildProfileTask()
+	public GenerateCppCompilerVariablesTask()
 	{
 		this.settings = new HashMap<String,Compiler>();
-		this.profileProperty = "profile";
+		this.compilersProperty = "compilers";
 
 		this.supportedCompilers = new HashSet<String>();
 		this.supportedCompilers.add( "vc8" );
@@ -116,7 +130,7 @@ public class GenerateCppBuildProfileTask extends Task
 		this.supportedCompilers.add( "vc10" );
 		this.supportedCompilers.add( "vc11" );
 		this.supportedCompilers.add( "vc12" );
-		this.supportedCompilers.add( "vc13" );
+		this.supportedCompilers.add( "vc14" );
 		
 		this.supportedArchitectures = new HashSet<String>();
 		this.supportedArchitectures.add( "x86" );
@@ -133,7 +147,7 @@ public class GenerateCppBuildProfileTask extends Task
 	public void execute()
 	{
 		// get the profile from the system properties
-		String profile = getProject().getProperty( profileProperty );
+		String profile = getProject().getProperty( compilersProperty );
 		
 		// if there is no profile, turn everything on
 		if( profile == null || profile.trim().equals("") )
@@ -303,8 +317,8 @@ public class GenerateCppBuildProfileTask extends Task
 	 */
 	public static void main( String[] args )
 	{
-		GenerateCppBuildProfileTask task = new GenerateCppBuildProfileTask();
-		task.setCompilers( "vc8,vc9,vc10,vc11,vc12,vc13" );
+		GenerateCppCompilerVariablesTask task = new GenerateCppCompilerVariablesTask();
+		task.setCompilers( "vc8,vc9,vc10,vc11,vc12,vc14" );
 		task.setArchitectures( "x86,amd64" );
 		task.setBuilds( "debug,release" );
 
