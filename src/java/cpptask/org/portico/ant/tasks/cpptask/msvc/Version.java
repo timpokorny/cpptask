@@ -33,12 +33,12 @@ public enum Version
 	vc7("VS70COMNTOOLS",     "Visual Studio 2003", "Not Defined" ),
 	vc8("VS80COMNTOOLS",     "Visual Studio 2005", "Not Defined" ),
 	vc9("VS90COMNTOOLS",     "Visual Studio 2008", "Not Defined" ),
-	vc10("VS100COMNTOOLS",   "Visual Studio 2010", "c:\\Program Files (x86)\\Microsoft Visual Studio 10.0\\VC" ),
-	vc11("VS110COMNTOOLS",   "Visual Studio 2012", "c:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC" ),
-	vc12("VS120COMNTOOLS",   "Visual Studio 2013", "c:\\Program Files (x86)\\Microsoft Visual Studio 13.0\\VC" ),
-	vc14("VS140COMNTOOLS",   "Visual Studio 2015", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC" ),
-	vc14_1("VS150COMNTOOLS", "Visual Studio 2017", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\VC\\Auxiliary\\Build" ), // Visual Studio Compiler 14.1
-	vc14_2("VS160COMNTOOLS", "Visual Studio 2019", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Auxiliary\\Build" ); // Visual Studio Compiler 14.2
+	vc10("VS100COMNTOOLS",   "Visual Studio 2010", "c:\\Program Files (x86)\\Microsoft Visual Studio 10.0\\VC\\vcvarsall.bat" ),
+	vc11("VS110COMNTOOLS",   "Visual Studio 2012", "c:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\vcvarsall.bat" ),
+	vc12("VS120COMNTOOLS",   "Visual Studio 2013", "c:\\Program Files (x86)\\Microsoft Visual Studio 13.0\\VC\\vcvarsall.bat" ),
+	vc14("VS140COMNTOOLS",   "Visual Studio 2015", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\vcvarsall.bat" ),
+	vc14_1("VS150COMNTOOLS", "Visual Studio 2017", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ), // Visual Studio Compiler 14.1
+	vc14_2("VS160COMNTOOLS", "Visual Studio 2019", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ); // Visual Studio Compiler 14.2
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
@@ -85,17 +85,21 @@ public enum Version
 	 */
 	public boolean isPresent()
 	{
-		// check for the presence of the appropriate environment variable
-		String vcDirectory = System.getenv( getToolsEnvironmentVariable() );
-		if( vcDirectory == null )
-			return false;
-		
-		// check to make sure the vcvarsall.bat file exists relative to the
-		// location specified in the environment variable
-		StringBuilder builder = new StringBuilder( vcDirectory );
-		builder.append( "\\..\\..\\VC\\vcvarsall.bat" );
-		File file = new File( vcDirectory+"\\..\\..\\VC\\vcvarsall.bat" );
-		return file.exists();
+		return new File(getVcvarsallBatchFile()).exists();
+//		
+//		File file = new File( getVcvarsallBatchFile() );
+//		
+//		// check for the presence of the appropriate environment variable
+//		String vcDirectory = System.getenv( getToolsEnvironmentVariable() );
+//		if( vcDirectory == null )
+//			return false;
+//		
+//		// check to make sure the vcvarsall.bat file exists relative to the
+//		// location specified in the environment variable
+//		StringBuilder builder = new StringBuilder( vcDirectory );
+//		builder.append( "\\..\\..\\VC\\vcvarsall.bat" );
+//		File file = new File( vcDirectory+"\\..\\..\\VC\\vcvarsall.bat" );
+//		return file.exists();
 	}
 
 	/**
