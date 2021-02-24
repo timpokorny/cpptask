@@ -30,27 +30,31 @@ public enum Version
 	//----------------------------------------------------------
 	//                    ENUMERATED VALUES
 	//----------------------------------------------------------
-	vc7("VS70COMNTOOLS", "Visual Studio 2003"),
-	vc8("VS80COMNTOOLS", "Visual Studio 2005"),
-	vc9("VS90COMNTOOLS", "Visual Studio 2008"),
-	vc10("VS100COMNTOOLS", "Visual Studio 2010"),
-	vc11("VS110COMNTOOLS", "Visual Studio 2012"),
-	vc12("VS120COMNTOOLS", "Visual Studio 2013"),
-	vc14("VS140COMNTOOLS", "Visual Studio 2014");
+	vc7("VS70COMNTOOLS",     "Visual Studio 2003", "Not Defined" ),
+	vc8("VS80COMNTOOLS",     "Visual Studio 2005", "Not Defined" ),
+	vc9("VS90COMNTOOLS",     "Visual Studio 2008", "Not Defined" ),
+	vc10("VS100COMNTOOLS",   "Visual Studio 2010", "c:\\Program Files (x86)\\Microsoft Visual Studio 10.0\\VC" ),
+	vc11("VS110COMNTOOLS",   "Visual Studio 2012", "c:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC" ),
+	vc12("VS120COMNTOOLS",   "Visual Studio 2013", "c:\\Program Files (x86)\\Microsoft Visual Studio 13.0\\VC" ),
+	vc14("VS140COMNTOOLS",   "Visual Studio 2015", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC" ),
+	vc14_1("VS150COMNTOOLS", "Visual Studio 2017", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\VC\\Auxiliary\\Build" ), // Visual Studio Compiler 14.1
+	vc14_2("VS160COMNTOOLS", "Visual Studio 2019", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Auxiliary\\Build" ); // Visual Studio Compiler 14.2
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
 	private String environmentVariable;
 	private String longName;
+	private String defaultBatchPath;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
-	private Version( String environmentVariable, String longName )
+	private Version( String environmentVariable, String longName, String defaultBatchPath )
 	{
 		this.environmentVariable = environmentVariable;
 		this.longName = longName;
+		this.defaultBatchPath = defaultBatchPath;
 	}
 
 	//----------------------------------------------------------
@@ -67,6 +71,11 @@ public enum Version
 	public String getLongName()
 	{
 		return this.longName;
+	}
+
+	public String getDefaultBatchPath()
+	{
+		return this.defaultBatchPath;
 	}
 
 	/**
@@ -103,19 +112,31 @@ public enum Version
 	 */
 	public String getVcvarsallBatchFile() throws BuildException
 	{
-		// get the value of the environment variable
-		String vcDirectory = System.getenv( getToolsEnvironmentVariable() );
-		if( vcDirectory == null )
-		{
-			throw new RuntimeException( "Visual Studio tools missing: %"+
-			                            environmentVariable+"% Required to locate install dir" );
-		}
+		// set us up with the default path as a fallback
+		File file = new File( getDefaultBatchPath() );
 		
-		// the tools directory isn't actually what we want - we want to jump up
-		// and across into the Visual C++ area to get to the compiler/linker setup script
-		StringBuilder builder = new StringBuilder( vcDirectory );
-		builder.append( "\\..\\..\\VC\\vcvarsall.bat" );
-		File file = new File( vcDirectory+"\\..\\..\\VC\\vcvarsall.bat" );
+		// if we have an environment variable, try to resolve from that
+		String vcDirectory = System.getenv( getToolsEnvironmentVariable() );
+		if( vcDirectory != null )
+		{
+			// the vcvarsall.bat file we're after isn't in the directory pointed to by
+			// the enviornment variable - we have to resolve it (and its location relative
+			// to the tools directory changed after VS 2015).
+			if( this.ordinal() <= Version.vc14.ordinal() )
+			{
+				// older path
+				StringBuilder builder = new StringBuilder( vcDirectory );
+				builder.append( "\\..\\..\\VC\\vcvarsall.bat" );
+				file = new File( vcDirectory+"\\..\\..\\VC\\vcvarsall.bat" );
+			}
+			else
+			{
+				// newer path
+				StringBuilder builder = new StringBuilder( vcDirectory );
+				builder.append( "\\..\\..\\VC\\vcvarsall.bat" );
+				file = new File( vcDirectory+"\\..\\..\\VC\\Auxiliary\\Build\\vcvarsall.bat" );
+			}
+		}
 
 		// check to make sure we can actually have a reference to the file
 		if( file.exists() == false )
