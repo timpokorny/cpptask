@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -66,6 +67,7 @@ public class VerifyJdkTask extends Task
 	//----------------------------------------------------------
 	private String location;
 	private Arch architecture;
+	private String javaVersion;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
@@ -74,6 +76,7 @@ public class VerifyJdkTask extends Task
 	{
 		this.location = null;
 		this.architecture = null;
+		this.javaVersion = null;
 	}
 
 	//----------------------------------------------------------
@@ -119,9 +122,14 @@ public class VerifyJdkTask extends Task
 		// ----------------------------
 		// Verify that a JDK is present
 		// ----------------------------
-		if( containsJdk(location) == false )
+		if( containsJdk(location) == false && containsModernJdk(location) == false )
 		{
 			throw new BuildException( "Location does not contain a valid JDK ["+location+"]" );
+		}
+		
+		if( providesJavaVersion( location, javaVersion ) == false )
+		{
+			throw new BuildException( "JDK does not support required Java version ["+location+"]" );
 		}
 
 		// ---------------------
@@ -232,6 +240,94 @@ public class VerifyJdkTask extends Task
 		// not a JDK sadly :(
 		return false;
 	}
+	
+	/**
+	 * Check the given location to see if it contains a "modern" Java 9+ JDK. To verify this,
+	 * we check for the jmods folder, which will be present if the JDK supports modules
+	 * 
+	 * @return true if the location points to a valid 9+ JDK, false otherwise
+	 */
+	private boolean containsModernJdk( String location )
+	{
+		File file = new File( location );
+		if( file.exists() == false )
+		{
+			return false;
+		}
+		
+		// jdk 9+ will have a jmods directory
+		File jmodsDir = new File( file, "jmods" );
+		if( jmodsDir.isDirectory() )
+		{
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Check the given location to see if it is able to meet the java version required,
+	 * by reading the jdk release file and checking the version equals or exceeds the
+	 * given required version
+	 * 
+	 * @return true if the jdk can provide the required java version, false otherwise
+	 */
+	private boolean providesJavaVersion( String location, String requiredVersionString )
+	{
+		// no requirement given, so assume user doesn't care
+		if( requiredVersionString == null )
+		{
+			return true;
+		}
+		
+		File jdk = new File( location );
+		if ( jdk.exists() == false )
+		{
+			return false;
+		}
+		
+		try
+		{
+			// load the properties file and extract the value of JAVA_VERSION
+			Properties properties = new Properties();
+			FileInputStream fis = new FileInputStream( location+"/release" );
+			properties.load( fis );
+			fis.close();
+			
+			// get actual numeric version number, e.g. 8 will stay as 8, but 1.8 becomes 8
+			String[] splitString = requiredVersionString.split( Pattern.quote(".") );
+			String majorVersion = splitString[ splitString.length - 1 ];
+			int requiredVersion = Integer.parseInt( majorVersion );
+			
+			// get jdk version as above
+			String jdkVersionString = properties.get("JAVA_VERSION").toString();
+			String[] jdkSplit = jdkVersionString.replace("\"", "").split( Pattern.quote(".") );
+			String jdkMajorVersion;
+			// given as 1.major.minor
+			if( jdkSplit[0].equals("1") )
+			{
+				jdkMajorVersion = jdkSplit[1];
+			}
+			else // major.minor
+			{
+				jdkMajorVersion = jdkSplit[0];
+			}
+			int jdkVersion = Integer.parseInt( jdkMajorVersion );
+			
+			// check if jdk can meet required version
+			if( jdkVersion >= requiredVersion )
+			{
+				return true;
+			}
+			
+		}
+		catch( IOException e )
+		{
+			log( "Problem loading JDK/release file" );
+		}
+		
+		return false;
+	}
 
 	/**
 	 * Load the file `[JDK]/release` as a `Properties` instance and extract the `OS_ARCH` property.
@@ -334,6 +430,14 @@ public class VerifyJdkTask extends Task
 	public void setArch( OutputArchAntEnum arch )
 	{
 		this.architecture = Arch.valueOf( arch.getValue().toLowerCase() );
+	}
+	
+	/**
+	 * The version of Java we want the JDK to provide
+	 */
+	public void setRequiredVersion( String version )
+	{
+		this.javaVersion = version;
 	}
 
 	private void logVerbose( String message )
