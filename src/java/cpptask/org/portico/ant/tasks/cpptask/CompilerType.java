@@ -36,7 +36,8 @@ public enum CompilerType
 	VC12,   // 2013
 	VC14,   // 2015
 	VC14_1, // 2017
-	VC14_2; // 2019
+	VC14_2, // 2019
+	VC14_3; // 2022
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
@@ -86,6 +87,8 @@ public enum CompilerType
 				return new CompilerMSVC( Version.vc14_1 );
 			case VC14_2:
 				return new CompilerMSVC( Version.vc14_2 );
+			case VC14_3:
+				return new CompilerMSVC( Version.vc14_3 );
 			default:
 				throw new BuildException( "unsupported compiler type: " + type );
 		}
@@ -119,6 +122,8 @@ public enum CompilerType
 			return CompilerType.VC14_1;
 		else if( string.equalsIgnoreCase("vc14.2") || string.equalsIgnoreCase("vc14_2") )
 			return CompilerType.VC14_2;
+		else if( string.equalsIgnoreCase("vc14.3") || string.equalsIgnoreCase("vc14_3") )
+			return CompilerType.VC14_3;
 		else
 			throw new BuildException( "Unknown compiler type: " + string );
 	}

@@ -133,6 +133,7 @@ public class GenerateCppCompilerVariablesTask extends Task
 		this.supportedCompilers.add( "vc14" );
 		this.supportedCompilers.add( "vc14.1" );
 		this.supportedCompilers.add( "vc14.2" );
+		this.supportedCompilers.add( "vc14.3" );
 		
 		this.supportedArchitectures = new HashSet<String>();
 		this.supportedArchitectures.add( "x86" );
@@ -320,7 +321,7 @@ public class GenerateCppCompilerVariablesTask extends Task
 	public static void main( String[] args )
 	{
 		GenerateCppCompilerVariablesTask task = new GenerateCppCompilerVariablesTask();
-		task.setCompilers( "vc8,vc9,vc10,vc11,vc12,vc14,vc14.1,vc14.2" );
+		task.setCompilers( "vc8,vc9,vc10,vc11,vc12,vc14,vc14.1,vc14.2,vc14.3" );
 		task.setArchitectures( "x86,amd64" );
 		task.setBuilds( "debug,release" );
 
