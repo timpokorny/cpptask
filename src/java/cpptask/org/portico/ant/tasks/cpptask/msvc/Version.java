@@ -38,7 +38,8 @@ public enum Version
 	vc12("VS120COMNTOOLS",   "Visual Studio 2013", "c:\\Program Files (x86)\\Microsoft Visual Studio 13.0\\VC\\vcvarsall.bat" ),
 	vc14("VS140COMNTOOLS",   "Visual Studio 2015", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\vcvarsall.bat" ),
 	vc14_1("VS150COMNTOOLS", "Visual Studio 2017", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ), // Visual Studio Compiler 14.1
-	vc14_2("VS160COMNTOOLS", "Visual Studio 2019", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ); // Visual Studio Compiler 14.2
+	vc14_2("VS160COMNTOOLS", "Visual Studio 2019", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ), // Visual Studio Compiler 14.2
+	vc14_3("VS170COMNTOOLS", "Visual Studio 2022", "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ); // Visual Studio Compiler 14.3
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
