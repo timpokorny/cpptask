@@ -15,13 +15,10 @@
  */
 package org.portico.ant.tasks.platform;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Properties;
-import java.util.regex.Pattern;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -34,27 +31,26 @@ import org.portico.ant.tasks.utils.Platform;
  * Given a location to look in, and the desired platform architecture, this task
  * will verify that:
  * 
- *   * The directory contains a JDK installation
- *   * The target platform of the specified JDK matches that provided to the task
+ * <ul>
+ *   <li>The directory contains a JDK installation</li>
+ *   <li>The target platform of the specified JDK matches that provided to the task</li>
+ *   <li>THe target version (if specified) matches the JDK version</li>
+ * </ul>
  *
- * If the directory does not contains a valid JDK, or one of the wrong architecture,
- * a `BuildException` will be thrown.
+ * If the directory does not contains a valid JDK, or the configuration properties cannot
+ * be verified, a {@link BuildException} will be thrown.
  *
- * ### Architecture Verification
- * To verify that the architecture of the JDK matches that requested, and to ensure that the
- * location points to a JDK (not a JRE), we employ two specific measures:
- *   
- *   1. Check for a `[JDK]/release` file and look inside it for the `OS_ARCH` setting 
- *   2. Run `[JDK]/bin/java -version` and parse the output for clues to the architecture
  * 
  * Example usage:
- * ```
- * <verifyJdk location="/path/to/JDK" architecture="amd64"/>
- * ```
- *  
- * Argument:
- *   * (mandatory) location: The location to search
- *   * (mandatory) architecture: The desired JDK arch (x86, amd64)
+ * <pre>
+ * <verifyJdk location="/path/to/JDK" architecture="amd64" requiredVersion="11"/>
+ * </pre>
+ * 
+ * Arguments:
+ * <ul>
+ *   <li>(mandatory) location: The location to search</li>
+ *   <li>(optional)  architecture: The desired JDK arch (x86, amd64) - defaults to amd64</li>
+ *   <li>(optional)  requiredVersion: The required major version of Java - defaults to "any"</li> 
  */
 public class VerifyJdkTask extends Task
 {
@@ -67,7 +63,7 @@ public class VerifyJdkTask extends Task
 	//----------------------------------------------------------
 	private String location;
 	private Arch architecture;
-	private String javaVersion;
+	private String requiredVersion;
 
 	//----------------------------------------------------------
 	//                      CONSTRUCTORS
@@ -75,27 +71,27 @@ public class VerifyJdkTask extends Task
 	public VerifyJdkTask()
 	{
 		this.location = null;
-		this.architecture = null;
-		this.javaVersion = null;
+		this.architecture = Arch.amd64; // default to 64-bit
+		this.requiredVersion = "any";   // default to "any", which will cause check to skip
 	}
 
 	//----------------------------------------------------------
 	//                    INSTANCE METHODS
 	//----------------------------------------------------------
 	/**
-	 * Check to see if the given location contains a JDK for the specified machine architecture.
-	 * If we find a JDK and confirm that its target architecture matches that provided, this
-	 * target will execute without error. If we can't verify the directory contains a JDK, or
-	 * ensure that the arch matches that requested, a `BuildException` will be thrown to kill
-	 * the build.
+	 * Check to see if the configured location contains a valid JDK according to our configured
+	 * parameters. If the JDK exists, is the required architecture and (if specified) the required
+	 * version, return happily.
 	 * 
-	 * We employ a number of means to try and determine the architecture for a JDK:
+	 * If the JDK doesn't exist, isn't the required architecture or the required version, then 
+	 * throw a BuildException and exit.
 	 * 
-	 *  # Consult the `[JDK]/release` file, looking for an `OS_ARCH` property
-	 *  # Run `[JDK]/bin/java -version` and inspect the output, looking for an indicator
+	 * To verify a JDK we employ one of two approaches:
 	 * 
-	 * If none of these yield a result, or we discover a JDK whose architecture we can confirm,
-	 * and it does not match the target, a `BuildException` is thrown.
+	 *  - Check for a `[JDK]/release` file, and if present look at values inside it
+	 *  - Run `[JDK]/bin/java -version` and inspect the output, looking for an indicator
+	 * 
+	 * If none of these yield a result, a `BuildException` is thrown.
 	 *
 	 * @throws BuildException If we find platform details and they don't match the target
 	 */
@@ -104,10 +100,8 @@ public class VerifyJdkTask extends Task
 		// validate inputs
 		if( location == null )
 			throw new BuildException( "Mandatory attribute [location] missing from <verifyJdk>" );
-		else if( architecture == null )
-			throw new BuildException( "Mandatory attribute [architecture] missing from <verifyJdk>" );
 		
-		logVerbose( "Searching for "+architecture+" JDK in ["+location+"]" );
+		log( "Scanning for JDK {arch="+architecture+",ver="+requiredVersion+"}: "+location );
 		
 		// -----------------------------
 		// Check for Win32/Win64 Problem
@@ -122,69 +116,67 @@ public class VerifyJdkTask extends Task
 		// ----------------------------
 		// Verify that a JDK is present
 		// ----------------------------
-		if( containsJdk(location) == false && containsModernJdk(location) == false )
+		if( containsJdk(location) == false )
+			throw new BuildException( "(Verify JDK) Location not identifiable as JDK ["+location+"]" );
+
+		// -----------------------------------
+		// Check {JDK}/release file for values
+		// -----------------------------------
+		// does the release file even exist?
+		File jdkLocation = new File( this.location );
+		File releaseFile = new File( jdkLocation, "release" );
+		if( releaseFile.exists() == false )
 		{
-			throw new BuildException( "Location does not contain a valid JDK ["+location+"]" );
-		}
-		
-		if( providesJavaVersion( location, javaVersion ) == false )
-		{
-			throw new BuildException( "JDK does not support required Java version ["+location+"]" );
+			throw new BuildException( "(Verify JDK) Could not find release file needed to verify: "+
+			                          jdkLocation.getAbsolutePath() );
 		}
 
-		// ---------------------
-		// Determin Architecture
-		// ---------------------
-		// We determine the architecture a number of ways:
-		//
-		// 1. The Release File
-		// Many new JDKs include a file called "release" in them. This file contains information
-		// about the JDK, such as ... the platform (YAY!). The release file is a standard
-		// properties file, with the architecture specification under the "OS_ARCH" property.
-		// We try this method first, as it is the simplest.
-		//
-		Arch jdkArchitecture = getArchFromReleaseFile( location );
-		if( jdkArchitecture != null )
+		// get the properties from the release
+		Properties releaseProperties = getPropertiesFromReleaseFile( releaseFile );
+		if( releaseProperties == null )
 		{
-			// we found the arch, verify it
-			if( jdkArchitecture == this.architecture )
-			{
-				log( "Verified JDK ("+jdkArchitecture+"): "+location );
-				return;
-			}
-			else
-			{
-				throw new BuildException( "JDK architecture ["+jdkArchitecture+
-				                          "] does not match target ["+architecture+"]" );
-			}
-		}
-		
-		//
-		// 2. Run "java -version"
-		// If we can't find the release file we try to run the java executable up and ask it
-		// about its version, picking the architecture from its output.
-		//
-		jdkArchitecture = getArchFromProcess( location );
-		if( jdkArchitecture != null )
-		{
-			if( jdkArchitecture == this.architecture )
-			{
-				log( "Verified JDK ("+jdkArchitecture+"): "+location );
-				return;
-			}
-			else
-			{
-				throw new BuildException( "JDK architecture ["+jdkArchitecture+
-				                          "] does not match target ["+architecture+"]" );
-			}
+			throw new BuildException( "(Verify JDK) Could not read release file needed to verify: "+
+			                          releaseFile.getAbsolutePath() );
 		}
 
-		//
-		// 3. Fail :(
-		//
-		logVerbose( "Could not determine JDK architecture :(" );
-		throw new BuildException( "Found JDK but could not confirm its architecture (expected: "+
-		                          architecture+"): "+location );
+		//---------------------------------------------------
+		// Check the ARCHITECTURE specified in the properties
+		//---------------------------------------------------
+		logVerbose( "Found {JDK}/release file; interrogating..." );
+		Arch jdkArchitecture = getArchFromProperties( releaseProperties );
+		if( jdkArchitecture == null )
+		{
+			throw new BuildException( "(Verify JDK) Could not verify arch; OS_ARCH missing ("+
+			                          jdkLocation+")" );
+		}
+
+		if( jdkArchitecture != this.architecture )
+		{
+			throw new BuildException( "(Verify JDK) Architecture ["+jdkArchitecture+
+			                          "] does not match target ["+architecture+"] ("+jdkLocation+")" );
+		}
+		else
+		{
+			logVerbose( "Verified JDK Arch (found="+jdkArchitecture+",required="+architecture+")" );
+		}
+		
+		//---------------------------------------------------
+		// Check the java VERSION specified in the properties
+		//---------------------------------------------------
+		String jdkVersion = releaseProperties.getProperty( "JAVA_VERSION" );
+		// strip the " from the value
+		if( jdkVersion != null )
+			jdkVersion = jdkVersion.replace( "\"", "" );
+		if( isVersionMatching(jdkVersion,this.requiredVersion) == false )
+		{
+			throw new BuildException( "(Verify JDK) Version ["+jdkVersion+"] does not match target ["+
+			                          requiredVersion+"] ("+jdkLocation+")" );
+		}
+		else
+		{
+			logVerbose( "Verified JDK Version (found="+jdkVersion+",required="+requiredVersion+")" );
+		}
+		
 	}
 
 	/**
@@ -217,202 +209,108 @@ public class VerifyJdkTask extends Task
 	}
 	
 	/**
-	 * Check the given location to see if it contains a JDK. To verify this, we check for
-	 * the presence of a "jre" subdirectory. Not the perfect method, but this task was written
-	 * to allow packaging of the correct JRE with installers, so a fair assumption for the
-	 * primary use-case.
+	 * Check the given location to see if it contains a JDK. Starting with Java 9, there is no
+	 * longer a JRE/JDK distinction, so the verification process will vary depending on version.
 	 * 
-	 * @return True if the location points to a valid JDK, false otherwise
+	 * To verify this, we first check for the presence of a "jre" subdirectory. Not the perfect
+	 * method, but it worked for Java 8 or earlier. 
+	 * 
+	 * If there is no jre directory, we check to see whether it is a Java 9+ JDK by looking for
+	 * the jmods folder.
+	 * 
+	 * @return true if the location points to a valid JDK, false otherwise
 	 */
 	private boolean containsJdk( String location )
 	{
-		// if this is a JDK, it will have a JRE sub-directory
-		File file = new File( location );
-		if( file.exists() == false )
-			return false;
+		// Check for Java 8 and earlier style JDK
+		File file = new File( location, "jre" );
+		if( file.exists() )
+			return true;
 		
-		for( String subpath : file.list() )
-		{
-			if( subpath.endsWith("jre") )
-				return true;
-		}
-
-		// not a JDK sadly :(
+		// Check for Java 9 or later style JDK
+		file = new File( location, "jmods" );
+		if( file.exists() )
+			return true;
+		
+		// Did not pass any checks... not a JDK
 		return false;
 	}
 	
 	/**
-	 * Check the given location to see if it contains a "modern" Java 9+ JDK. To verify this,
-	 * we check for the jmods folder, which will be present if the JDK supports modules
+	 * Load the given properties file and return it. Returns <code>null</code> if the file cannot
+	 * be read.
 	 * 
-	 * @return true if the location points to a valid 9+ JDK, false otherwise
+	 * @param releaseFile The file to load as properties
+	 * @return The file, as a Properties object, or null if the file cannot be read
 	 */
-	private boolean containsModernJdk( String location )
+	private Properties getPropertiesFromReleaseFile( File releaseFile )
 	{
-		File file = new File( location );
-		if( file.exists() == false )
-		{
-			return false;
-		}
-		
-		// jdk 9+ will have a jmods directory
-		File jmodsDir = new File( file, "jmods" );
-		if( jmodsDir.isDirectory() )
-		{
-			return true;
-		}
-		
-		return false;
-	}
-	
-	/**
-	 * Check the given location to see if it is able to meet the java version required,
-	 * by reading the jdk release file and checking the version equals or exceeds the
-	 * given required version
-	 * 
-	 * @return true if the jdk can provide the required java version, false otherwise
-	 */
-	private boolean providesJavaVersion( String location, String requiredVersionString )
-	{
-		// no requirement given, so assume user doesn't care
-		if( requiredVersionString == null )
-		{
-			return true;
-		}
-		
-		File jdk = new File( location );
-		if ( jdk.exists() == false )
-		{
-			return false;
-		}
-		
-		try
-		{
-			// load the properties file and extract the value of JAVA_VERSION
-			Properties properties = new Properties();
-			FileInputStream fis = new FileInputStream( location+"/release" );
-			properties.load( fis );
-			fis.close();
-			
-			// get actual numeric version number, e.g. 8 will stay as 8, but 1.8 becomes 8
-			String[] splitString = requiredVersionString.split( Pattern.quote(".") );
-			String majorVersion = splitString[ splitString.length - 1 ];
-			int requiredVersion = Integer.parseInt( majorVersion );
-			
-			// get jdk version as above
-			String jdkVersionString = properties.get("JAVA_VERSION").toString();
-			String[] jdkSplit = jdkVersionString.replace("\"", "").split( Pattern.quote(".") );
-			String jdkMajorVersion;
-			// given as 1.major.minor
-			if( jdkSplit[0].equals("1") )
-			{
-				jdkMajorVersion = jdkSplit[1];
-			}
-			else // major.minor
-			{
-				jdkMajorVersion = jdkSplit[0];
-			}
-			int jdkVersion = Integer.parseInt( jdkMajorVersion );
-			
-			// check if jdk can meet required version
-			if( jdkVersion >= requiredVersion )
-			{
-				return true;
-			}
-			
-		}
-		catch( IOException e )
-		{
-			log( "Problem loading JDK/release file" );
-		}
-		
-		return false;
-	}
-
-	/**
-	 * Load the file `[JDK]/release` as a `Properties` instance and extract the `OS_ARCH` property.
-	 * Convert that into an {@link Arch} and return it. If there is a probelm locating or reading
-	 * the file, it doesn't contain an `OS_ARCH` property of the architecture is unknown, a problem
-	 * is logged and null is returned.
-	 */
-	private Arch getArchFromReleaseFile( String location )
-	{
-		String archString = null;
 		try
 		{
 			// load the properties file and extract the value of OS_ARCH
 			Properties properties = new Properties();
-			FileInputStream fis = new FileInputStream( location+"/release" );
+			FileInputStream fis = new FileInputStream( releaseFile );
 			properties.load( fis );
 			fis.close();
-			
-			// get the architecture information
-			archString = properties.get("OS_ARCH").toString();
-			if( archString == null )
-				return null;
-			
-			archString = archString.replace( "\"", "" );
-			return Arch.fromString( archString );
+			return properties;
 		}
 		catch( IOException ioex )
 		{
-			log( "Problem loading JDK/release file, trying another method to identify platform",
-			     Project.MSG_VERBOSE );
-
-			return null;
-		}
-		catch( BuildException be )
-		{
-			log( "Unknown architecture in the release file ["+archString+"], trying other means. ",
-			     Project.MSG_WARN );
-
 			return null;
 		}
 	}
 
 	/**
-	 * Runs `[JDK]/bin/java -version` and scans the output for a hint towards the architecture.
+	 * Look in the given properties for the value of <code>OS_ARCH</code> and if present, return it
+	 * as an instance of {@link Arch}. If the property is not found, <code>null</code> is returned.
+	 * If the property <i>is</i> found, but is not recognized, a {@link BuildException} is thrown.
 	 * 
-	 * When you run `java -version` you get a string like this:
-	 * 
-	 * ```
-	 * Java version "1.7.0_07"
-	 * Java(TM) SE Runtime Environment (build 1.7.0_07-b10)
-	 * Java HotSpot(TM) 64-Bit Server VM (build 23.3-b01, mixed mode)
-	 * ```
-	 * 
-	 * If it is a 64-bit JVM, the 64-Bit string will be included. In 32-bit cases, it won't.
-	 * Just to be safe, run "java -version" and check all lines for the presence of "64-bit"
+	 * @param properties The properties to search for architecture information in.
+	 * @return An instance of {@link Arch} is the value is found and valid, or null if the
+	 *         properties do not contain the key
 	 */
-	private Arch getArchFromProcess( String location ) throws BuildException
+	private Arch getArchFromProperties( Properties properties )
 	{
-		try
+		if( properties.containsKey("OS_ARCH") )
 		{
-			Process process = Runtime.getRuntime().exec( location+"/bin/java -version" );
-			BufferedReader reader = new BufferedReader( new InputStreamReader(process.getErrorStream()) );
-
-			// inspect each line to see if we have what we need
-			while( true )
-			{
-				String line = reader.readLine();
-				if( line == null )
-				{
-					// no lines left - must be 32-bit
-					return Arch.x86;
-				}
-
-				line = line.toLowerCase();
-				if( line.contains( "64-bit" ) )
-					return Arch.amd64;
-			}
+			String archString = properties.get("OS_ARCH").toString();
+			archString = archString.replace( "\"", "" );
+			return Arch.fromString( archString );
 		}
-		catch( IOException ioex )
+		else
 		{
-			throw new BuildException( "Error determining JDK arch while running \"java -version\": "+
-			                          ioex.getMessage(), ioex );
+			return null;
 		}
 	}
 
+	/**
+	 * Check to see whether the java version we found is a match for what we want
+	 * 
+	 * @param found The version from the properties file
+	 * @param required The version we require
+	 * @return True if they are a match (equivalent), false if they are not
+	 */
+	private boolean isVersionMatching( String found, String required )
+	{
+		// make sure the value actually exists in the JDK
+		if( found == null )
+			return false;
+
+		// if we will take anything, don't even bother checking
+		if( requiredVersion.equalsIgnoreCase("any") )
+			return true;
+
+		// we need to check - if it's an earlier JDK, it'll start with "1.x"
+		if( found.startsWith("1.") )
+		{
+			return found.startsWith( "1."+this.requiredVersion );
+		}
+		else
+		{
+			return found.startsWith( this.requiredVersion );
+		}
+	}
+	
 	////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Accessor and Mutator Methods ///////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -433,21 +331,17 @@ public class VerifyJdkTask extends Task
 	}
 	
 	/**
-	 * The version of Java we want the JDK to provide
+	 * The version of Java we want the JDK to provide. This should be the major version
+	 * number, e.g. 8, 9, 10, 11, 17, 21, ...
 	 */
 	public void setRequiredVersion( String version )
 	{
-		this.javaVersion = version;
+		this.requiredVersion = version;
 	}
 
 	private void logVerbose( String message )
 	{
 		log( message, Project.MSG_VERBOSE );
-	}
-	
-	public void logError( String message )
-	{
-		log( message, Project.MSG_ERR );
 	}
 
 	//----------------------------------------------------------
