@@ -37,9 +37,9 @@ public enum Version
 	vc11("VS110COMNTOOLS",   "Visual Studio 2012", "c:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\vcvarsall.bat" ),
 	vc12("VS120COMNTOOLS",   "Visual Studio 2013", "c:\\Program Files (x86)\\Microsoft Visual Studio 13.0\\VC\\vcvarsall.bat" ),
 	vc14("VS140COMNTOOLS",   "Visual Studio 2015", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\vcvarsall.bat" ),
-	vc14_1("VS150COMNTOOLS", "Visual Studio 2017", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ), // Visual Studio Compiler 14.1
-	vc14_2("VS160COMNTOOLS", "Visual Studio 2019", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ), // Visual Studio Compiler 14.2
-	vc14_3("VS170COMNTOOLS", "Visual Studio 2022", "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Auxiliary\\Build\\vcvarsall.bat" ); // Visual Studio Compiler 14.3
+	vc14_1("VS150COMNTOOLS", "Visual Studio 2017", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\{{PACKAGE}}\\VC\\Auxiliary\\Build\\vcvarsall.bat" ),
+	vc14_2("VS160COMNTOOLS", "Visual Studio 2019", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\{{PACKAGE}}\\VC\\Auxiliary\\Build\\vcvarsall.bat" ),
+	vc14_3("VS170COMNTOOLS", "Visual Studio 2022", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\{{PACKAGE}}\\VC\\Auxiliary\\Build\\vcvarsall.bat" );
 
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
@@ -86,7 +86,14 @@ public enum Version
 	 */
 	public boolean isPresent()
 	{
-		return new File(getVcvarsallBatchFile()).exists();
+		try
+		{
+			return new File(getVcvarsallBatchFile()).exists();
+		}
+		catch( BuildException be )
+		{
+			return false;
+		}
 //		
 //		File file = new File( getVcvarsallBatchFile() );
 //		
@@ -107,23 +114,30 @@ public enum Version
 	 * This method returns the path to the vcvarsall.bat batch file for the selected
 	 * Visual Studio version.
 	 * <p/>
-	 * This location is based off the location pointed to by an environment variable
-	 * present on each system that has Visual Studio installed. The VSxxCOMNTOOLS variable
-	 * (where xx is replaced by the version number) points to a location from which we
-	 * can locate the desired batch file by jumping up and across a couple of directories.
-	 * <p/>
+	 * The file is located via one of a few different methods:
+	 * <ul>
+	 *   <li><b>Environment Variable</b>: First check the common <code>VSxxCOMNTOOLS</code>
+	 *       environment variable for the path to the tools (where xx is replaced by the version
+	 *       number). If not present, skip to next.</li>
+	 *   <li><b>Default Path</b>: Next, check the default installation paths. This will cycle
+	 *       through combinations for VS Professional, Community and Build Tools.</li>
+	 * </ul>
+	 * 
 	 * This method will return the canonical path to the file, throwing a RuntimeException
 	 * if it cannot be found.
 	 */
 	public String getVcvarsallBatchFile() throws BuildException
 	{
-		// set us up with the default path as a fallback
-		File file = new File( getDefaultBatchPath() );
-		
-		// if we have an environment variable, try to resolve from that
+		//
+		// Option 1: Environment Variable Check
+		//
 		String vcDirectory = System.getenv( getToolsEnvironmentVariable() );
 		if( vcDirectory != null )
 		{
+			// The variable is specified, which means someone has set something up. Assume
+			// that the path is valid and try to load from it.
+			File file = null;
+			
 			// the vcvarsall.bat file we're after isn't in the directory pointed to by
 			// the enviornment variable - we have to resolve it (and its location relative
 			// to the tools directory changed after VS 2015).
@@ -141,15 +155,43 @@ public enum Version
 				builder.append( "\\..\\..\\VC\\vcvarsall.bat" );
 				file = new File( vcDirectory+"\\..\\..\\VC\\Auxiliary\\Build\\vcvarsall.bat" );
 			}
-		}
 
-		// check to make sure we can actually have a reference to the file
-		if( file.exists() == false )
+			try
+			{
+				return file.getCanonicalPath();			
+			}
+			catch( IOException ioex )
+			{
+				throw new BuildException( ioex.getMessage(), ioex );
+			}
+		}
+		
+		//
+		// Option 2: Check Default Install Locations
+		//
+		// Path is basically the same, bug slightly different depending on the package installed
+		String pathProfessional = getDefaultBatchPath().replace( "{{PACKAGE}}", "Professional" );
+		String pathCommunity = getDefaultBatchPath().replace( "{{PACKAGE}}", "Community" );
+		String pathBuildTools = getDefaultBatchPath().replace( "{{PACKAGE}}", "BuildTools" );
+		String[] options = new String[] { pathProfessional, pathCommunity, pathBuildTools };
+		
+		// Loop through all options until we find one that exists (or we don't)
+		File file = null;
+		for( String option : options )
 		{
-			throw new BuildException( "Did not find vcvarsall.bat at expected location: "+
-			                          file.getAbsolutePath() );
+			file = new File( option );
+			if( file.exists() )
+				break;
 		}
-
+		
+		// We could not find it - generate exception
+		if( file == null || file.exists() == false )
+		{
+			String expected = getDefaultBatchPath().replace( "{{PACKAGE}}",
+			                                                 "{{Professional|Community|BuildTools}}" );
+			throw new BuildException( "Did not find vcvarsall.bat at location: "+expected );
+		}
+		
 		// return the canonical path (won't have any of that icky relative stuff)
 		try
 		{

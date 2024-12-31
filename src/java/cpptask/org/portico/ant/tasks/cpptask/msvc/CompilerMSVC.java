@@ -513,9 +513,9 @@ public class CompilerMSVC implements Compiler
 		{
 			// log what we're doing
 			task.log( "Starting Link" );
-			task.log( "Running link command: ", Project.MSG_DEBUG );
+			task.log( "Running link command: ", Project.MSG_VERBOSE );
 			for( String argument : commandline.getCommandline() )
-				task.log( argument, Project.MSG_DEBUG );
+				task.log( argument, Project.MSG_VERBOSE );
 
 			int exitValue = runner.execute();
 			if( exitValue != 0 )
