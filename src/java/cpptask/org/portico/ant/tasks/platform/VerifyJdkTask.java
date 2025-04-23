@@ -227,8 +227,11 @@ public class VerifyJdkTask extends Task
 		if( file.exists() )
 			return true;
 		
-		// Check for Java 9 or later style JDK
-		file = new File( location, "jmods" );
+		// Check for the javac executable
+		file = new File( location, "bin/javac" );
+		if( Platform.getOsPlatform().isWindows() )
+			file = new File( location, "bin/javac.exe" );
+
 		if( file.exists() )
 			return true;
 		
