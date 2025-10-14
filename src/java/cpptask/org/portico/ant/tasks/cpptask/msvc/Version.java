@@ -92,6 +92,7 @@ public enum Version
 		}
 		catch( BuildException be )
 		{
+be.printStackTrace();
 			return false;
 		}
 //		
@@ -182,6 +183,30 @@ public enum Version
 			file = new File( option );
 			if( file.exists() )
 				break;
+		}
+		
+		// We need to do this again, this time flipping "Program Files (x86)" with "Program Files"
+		// This is ugly, but let's just go with it for now.
+		if( file == null || file.exists() == false )
+		{
+    		String home32 = "Program Files (x86)";
+    		String home64 = "Program Files";
+    		for( int i = 0; i < options.length; i++ )
+    		{
+    			if( options[i].contains(home32) )
+    				options[i] = options[i].replace( home32, home64 );
+    			else
+    				// we'll just assume if the (x86) is missing that it's x64 and reverse the swap
+    				options[i] = options[i].replace( home64, home32 );
+    		}
+    		
+    		// run the check again with the updates options
+    		for( String option : options )
+    		{
+    			file = new File( option );
+    			if( file.exists() )
+    				break;
+    		}
 		}
 		
 		// We could not find it - generate exception
